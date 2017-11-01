@@ -9,6 +9,7 @@ import (
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom/dimse"
 	"v.io/x/lib/vlog"
@@ -219,7 +220,7 @@ func (su *ServiceUser) CStore(ds *dicom.DataSet) error {
 	doassert(su.cm != nil)
 
 	var sopClassUID string
-	if sopClassUIDElem, err := ds.FindElementByTag(dicom.TagMediaStorageSOPClassUID); err != nil {
+	if sopClassUIDElem, err := ds.FindElementByTag(dicomtag.MediaStorageSOPClassUID); err != nil {
 		return err
 	} else if sopClassUID, err = sopClassUIDElem.GetString(); err != nil {
 		return err
@@ -303,9 +304,9 @@ func encodeQRPayload(opType qrOpType, qrLevel QRLevel, filter []*dicom.Element, 
 
 	// Encode the data payload containing the filtering conditions.
 	dataEncoder := dicomio.NewBytesEncoderWithTransferSyntax(context.transferSyntaxUID)
-	dicom.WriteElement(dataEncoder, dicom.MustNewElement(dicom.TagQueryRetrieveLevel, qrLevelString))
+	dicom.WriteElement(dataEncoder, dicom.MustNewElement(dicomtag.QueryRetrieveLevel, qrLevelString))
 	for _, elem := range filter {
-		if elem.Tag == dicom.TagQueryRetrieveLevel {
+		if elem.Tag == dicomtag.QueryRetrieveLevel {
 			// This tag is auto-computed from qrlevel.
 			return context, nil, fmt.Errorf("%v: tag must not be in the C-FIND payload (it is derived from qrLevel)", elem.Tag)
 		}

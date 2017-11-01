@@ -13,6 +13,7 @@ import (
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-netdicom/pdu"
 	"v.io/x/lib/vlog"
 )
@@ -58,7 +59,7 @@ func (d *messageDecoder) setError(err error) {
 
 // Find an element with the given tag. If optional==OptionalElement, returns nil
 // if not found.  If optional==RequiredElement, sets d.err and return nil if not found.
-func (d *messageDecoder) findElement(tag dicom.Tag, optional isOptionalElement) *dicom.Element {
+func (d *messageDecoder) findElement(tag dicomtag.Tag, optional isOptionalElement) *dicom.Element {
 	for i, elem := range d.elems {
 		if elem.Tag == tag {
 			vlog.VI(3).Infof("Return %v for %s", elem, tag.String())
@@ -67,7 +68,7 @@ func (d *messageDecoder) findElement(tag dicom.Tag, optional isOptionalElement) 
 		}
 	}
 	if optional == requiredElement {
-		d.setError(fmt.Errorf("Element %s not found during DIMSE decoding", dicom.TagString(tag)))
+		d.setError(fmt.Errorf("Element %s not found during DIMSE decoding", dicomtag.DebugString(tag)))
 	}
 	return nil
 }
@@ -83,13 +84,13 @@ func (d *messageDecoder) unparsedElements() (unparsed []*dicom.Element) {
 }
 
 func (d *messageDecoder) getStatus() (s Status) {
-	s.Status = StatusCode(d.getUInt16(dicom.TagStatus, requiredElement))
-	s.ErrorComment = d.getString(dicom.TagErrorComment, optionalElement)
+	s.Status = StatusCode(d.getUInt16(dicomtag.Status, requiredElement))
+	s.ErrorComment = d.getString(dicomtag.ErrorComment, optionalElement)
 	return s
 }
 
 // Find an element with "tag", and extract a string value from it. Errors are reported in d.err.
-func (d *messageDecoder) getString(tag dicom.Tag, optional isOptionalElement) string {
+func (d *messageDecoder) getString(tag dicomtag.Tag, optional isOptionalElement) string {
 	e := d.findElement(tag, optional)
 	if e == nil {
 		return ""
@@ -102,7 +103,7 @@ func (d *messageDecoder) getString(tag dicom.Tag, optional isOptionalElement) st
 }
 
 // Find an element with "tag", and extract a uint32 from it. Errors are reported in d.err.
-func (d *messageDecoder) getUInt32(tag dicom.Tag, optional isOptionalElement) uint32 {
+func (d *messageDecoder) getUInt32(tag dicomtag.Tag, optional isOptionalElement) uint32 {
 	e := d.findElement(tag, optional)
 	if e == nil {
 		return 0
@@ -115,7 +116,7 @@ func (d *messageDecoder) getUInt32(tag dicom.Tag, optional isOptionalElement) ui
 }
 
 // Find an element with "tag", and extract a uint16 from it. Errors are reported in d.err.
-func (d *messageDecoder) getUInt16(tag dicom.Tag, optional isOptionalElement) uint16 {
+func (d *messageDecoder) getUInt16(tag dicomtag.Tag, optional isOptionalElement) uint16 {
 	e := d.findElement(tag, optional)
 	if e == nil {
 		return 0
@@ -128,7 +129,7 @@ func (d *messageDecoder) getUInt16(tag dicom.Tag, optional isOptionalElement) ui
 }
 
 // Encode a DIMSE field with the given tag, given value "v"
-func encodeField(e *dicomio.Encoder, tag dicom.Tag, v interface{}) {
+func encodeField(e *dicomio.Encoder, tag dicomtag.Tag, v interface{}) {
 	elem := dicom.Element{
 		Tag:             tag,
 		VR:              "", // autodetect
@@ -178,9 +179,9 @@ const (
 )
 
 func encodeStatus(e *dicomio.Encoder, s Status) {
-	encodeField(e, dicom.TagStatus, uint16(s.Status))
+	encodeField(e, dicomtag.Status, uint16(s.Status))
 	if s.ErrorComment != "" {
-		encodeField(e, dicom.TagErrorComment, s.ErrorComment)
+		encodeField(e, dicomtag.ErrorComment, s.ErrorComment)
 	}
 }
 
@@ -208,7 +209,7 @@ func ReadMessage(d *dicomio.Decoder) Message {
 		parsed: make([]bool, len(elems)),
 		err:    nil,
 	}
-	commandField := dd.getUInt16(dicom.TagCommandField, requiredElement)
+	commandField := dd.getUInt16(dicomtag.CommandField, requiredElement)
 	if dd.err != nil {
 		d.SetError(dd.err)
 		return nil
@@ -233,7 +234,7 @@ func EncodeMessage(e *dicomio.Encoder, v Message) {
 	bytes := subEncoder.Bytes()
 	e.PushTransferSyntax(binary.LittleEndian, dicomio.ImplicitVR)
 	defer e.PopTransferSyntax()
-	encodeField(e, dicom.TagCommandGroupLength, uint32(len(bytes)))
+	encodeField(e, dicomtag.CommandGroupLength, uint32(len(bytes)))
 	e.WriteBytes(bytes)
 }
 

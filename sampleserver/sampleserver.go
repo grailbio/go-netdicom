@@ -18,6 +18,7 @@ import (
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom"
 	"github.com/grailbio/go-netdicom/dimse"
@@ -80,9 +81,9 @@ func (ss *server) onCStore(
 	e := dicomio.NewEncoderWithTransferSyntax(out, transferSyntaxUID)
 	dicom.WriteFileHeader(e,
 		[]*dicom.Element{
-			dicom.MustNewElement(dicom.TagTransferSyntaxUID, transferSyntaxUID),
-			dicom.MustNewElement(dicom.TagMediaStorageSOPClassUID, sopClassUID),
-			dicom.MustNewElement(dicom.TagMediaStorageSOPInstanceUID, sopInstanceUID),
+			dicom.MustNewElement(dicomtag.TransferSyntaxUID, transferSyntaxUID),
+			dicom.MustNewElement(dicomtag.MediaStorageSOPClassUID, sopClassUID),
+			dicom.MustNewElement(dicomtag.MediaStorageSOPInstanceUID, sopInstanceUID),
 		})
 	e.WriteBytes(data)
 	if err := e.Error(); err != nil {
