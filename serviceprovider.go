@@ -3,6 +3,7 @@
 package netdicom
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 
@@ -308,6 +309,11 @@ type ServiceProviderParams struct {
 
 	// If CStoreCallback=nil, a C-STORE call will produce an error response.
 	CStore CStoreCallback
+
+	// TLSConfig, if non-nil, enables TLS on the connection. See
+	// https://gist.github.com/michaljemala/d6f4e01c4834bf47a9c4 for an
+	// example for creating a TLS config from x509 cert files.
+	TLSConfig *tls.Config
 }
 
 // DefaultMaxPDUSize is the the PDU size advertized by go-netdicom.
@@ -437,7 +443,11 @@ func runCStoreOnNewAssociation(myAETitle, remoteAETitle, remoteHostPort string, 
 func NewServiceProvider(params ServiceProviderParams, port string) (*ServiceProvider, error) {
 	sp := &ServiceProvider{params: params}
 	var err error
-	sp.listener, err = net.Listen("tcp", port)
+	if params.TLSConfig != nil {
+		sp.listener, err = tls.Listen("tcp", port, params.TLSConfig)
+	} else {
+		sp.listener, err = net.Listen("tcp", port)
+	}
 	if err != nil {
 		return nil, err
 	}

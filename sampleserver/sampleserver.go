@@ -7,8 +7,11 @@ package main
 // It starts a DICOM server and serves files under <directory>.
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,6 +41,10 @@ Defaults to '.'.`)
 	outputFlag = flag.String("output", "", `
 The directory to store files received by C-STORE.
 If empty, use <dir>/incoming, where <dir> is the value of the -dir flag.`)
+
+	tlsKeyFlag  = flag.String("tls-key", "", "Sets the private key file. If empty, TLS is disabled.")
+	tlsCertFlag = flag.String("tls-cert", "", "File containing TLS cert to be presented to the peer.")
+	tlsCAFlag   = flag.String("tls-ca", "", "Optional file containing certs to match against what peers present.")
 )
 
 type server struct {
@@ -307,6 +314,27 @@ func main() {
 		datasets: datasets,
 	}
 	vlog.Infof("Listening on %s", port)
+
+	var tlsConfig *tls.Config
+	if *tlsKeyFlag != "" {
+		cert, err := tls.LoadX509KeyPair(*tlsCertFlag, *tlsKeyFlag)
+		if err != nil {
+			vlog.Fatal(err)
+		}
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+		if *tlsCAFlag != "" {
+			ca, err := ioutil.ReadFile(*tlsCAFlag)
+			if err != nil {
+				vlog.Fatal(err)
+			}
+			tlsConfig.RootCAs = x509.NewCertPool()
+			tlsConfig.RootCAs.AppendCertsFromPEM(ca)
+			tlsConfig.BuildNameToCertificate()
+		}
+	}
+
 	params := netdicom.ServiceProviderParams{
 		AETitle:   *aeFlag,
 		RemoteAEs: remoteAEs,
@@ -329,6 +357,7 @@ func main() {
 			data []byte) dimse.Status {
 			return ss.onCStore(transferSyntaxUID, sopClassUID, sopInstanceUID, data)
 		},
+		TLSConfig: tlsConfig,
 	}
 	sp, err := netdicom.NewServiceProvider(params, port)
 	if err != nil {
