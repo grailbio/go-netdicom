@@ -219,6 +219,7 @@ func (ss *server) onCMoveOrCGet(
 			ch <- resp
 		}
 	}
+	close(ch)
 }
 
 // Find DICOM files in or under "dir" and read its attributes. The return value
