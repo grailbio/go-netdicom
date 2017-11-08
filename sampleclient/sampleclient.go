@@ -1,10 +1,11 @@
-// A sample program for sending a DICOM file to a remote provider using C-STORE protocol.
+// A sample program for issuing C-STORE or C-FIND to a remote server.
 package main
 
 import (
 	"flag"
 
 	"github.com/grailbio/go-dicom"
+	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-netdicom"
 	"github.com/grailbio/go-netdicom/sopclass"
 	"v.io/x/lib/vlog"
@@ -15,7 +16,7 @@ var (
 	storeFlag         = flag.String("store", "", "If set, issue C-STORE to copy this file to the remote server")
 	aeTitleFlag       = flag.String("ae-title", "testclient", "AE title of the client")
 	remoteAETitleFlag = flag.String("remote-ae-title", "testserver", "AE title of the server")
-	findFlag          = flag.String("find", "", "blah")
+	findFlag          = flag.String("find", "", "If nonempty, issue a C-FIND.")
 )
 
 func newServiceUser(sopClasses []string) *netdicom.ServiceUser {
@@ -50,22 +51,22 @@ func cFind(argStr string) {
 	su := newServiceUser(sopclass.StorageClasses)
 	defer su.Release()
 	args := []*dicom.Element{
-		dicom.MustNewElement(dicom.TagSpecificCharacterSet, "ISO_IR 100"),
-		dicom.MustNewElement(dicom.TagAccessionNumber, ""),
-		dicom.MustNewElement(dicom.TagReferringPhysicianName, ""),
-		dicom.MustNewElement(dicom.TagPatientName, ""),
-		dicom.MustNewElement(dicom.TagPatientID, ""),
-		dicom.MustNewElement(dicom.TagPatientBirthDate, ""),
-		dicom.MustNewElement(dicom.TagPatientSex, ""),
-		dicom.MustNewElement(dicom.TagStudyInstanceUID, ""),
-		dicom.MustNewElement(dicom.TagRequestedProcedureDescription, ""),
-		dicom.MustNewElement(dicom.TagScheduledProcedureStepSequence,
-			dicom.MustNewElement(dicom.TagItem,
-				dicom.MustNewElement(dicom.TagModality, ""),
-				dicom.MustNewElement(dicom.TagScheduledProcedureStepStartDate, ""),
-				dicom.MustNewElement(dicom.TagScheduledProcedureStepStartTime, ""),
-				dicom.MustNewElement(dicom.TagScheduledPerformingPhysicianName, ""),
-				dicom.MustNewElement(dicom.TagScheduledProcedureStepStatus, ""))),
+		dicom.MustNewElement(dicomtag.SpecificCharacterSet, "ISO_IR 100"),
+		dicom.MustNewElement(dicomtag.AccessionNumber, ""),
+		dicom.MustNewElement(dicomtag.ReferringPhysicianName, ""),
+		dicom.MustNewElement(dicomtag.PatientName, ""),
+		dicom.MustNewElement(dicomtag.PatientID, ""),
+		dicom.MustNewElement(dicomtag.PatientBirthDate, ""),
+		dicom.MustNewElement(dicomtag.PatientSex, ""),
+		dicom.MustNewElement(dicomtag.StudyInstanceUID, ""),
+		dicom.MustNewElement(dicomtag.RequestedProcedureDescription, ""),
+		dicom.MustNewElement(dicomtag.ScheduledProcedureStepSequence,
+			dicom.MustNewElement(dicomtag.Item,
+				dicom.MustNewElement(dicomtag.Modality, ""),
+				dicom.MustNewElement(dicomtag.ScheduledProcedureStepStartDate, ""),
+				dicom.MustNewElement(dicomtag.ScheduledProcedureStepStartTime, ""),
+				dicom.MustNewElement(dicomtag.ScheduledPerformingPhysicianName, ""),
+				dicom.MustNewElement(dicomtag.ScheduledProcedureStepStatus, ""))),
 	}
 	for result := range su.CFind(netdicom.QRLevelStudy, args) {
 		if result.Err != nil {

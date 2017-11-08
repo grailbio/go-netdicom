@@ -104,7 +104,7 @@ def generate_go_definition(m: Message, out: IO[str]):
 
     print('', file=out)
     print(f'func (v* {m.name}) Encode(e *dicomio.Encoder) {{', file=out)
-    print(f'	encodeField(e, dicom.TagCommandField, uint16({m.command_field}))', file=out)
+    print(f'	encodeField(e, dicomtag.CommandField, uint16({m.command_field}))', file=out)
     for f in m.fields:
         if not f.required:
             if f.type == 'string':
@@ -112,12 +112,12 @@ def generate_go_definition(m: Message, out: IO[str]):
             else:
                 zero = '0'
             print(f'	if v.{f.name} != {zero} {{', file=out)
-            print(f'		encodeField(e, dicom.Tag{f.name}, v.{f.name})', file=out)
+            print(f'		encodeField(e, dicomtag.{f.name}, v.{f.name})', file=out)
             print(f'	}}', file=out)
         elif f.type == 'Status':
             print(f'	encodeStatus(e, v.{f.name})', file=out)
         else:
-            print(f'	encodeField(e, dicom.Tag{f.name}, v.{f.name})', file=out)
+            print(f'	encodeField(e, dicomtag.{f.name}, v.{f.name})', file=out)
     print('	for _, elem := range v.Extra {', file=out)
     print('		dicom.WriteElement(e, elem)', file=out)
     print('	}', file=out)
@@ -178,7 +178,7 @@ def generate_go_definition(m: Message, out: IO[str]):
                 required = 'requiredElement'
             else:
                 required = 'optionalElement'
-            print(f'	v.{f.name} = d.get{decoder}(dicom.Tag{f.name}, {required})', file=out)
+            print(f'	v.{f.name} = d.get{decoder}(dicomtag.{f.name}, {required})', file=out)
     print(f'	v.Extra = d.unparsedElements()', file=out)
     print(f'	return v', file=out)
     print('}', file=out)
@@ -191,11 +191,13 @@ package dimse
 // Code generated from generate_dimse_messages.py. DO NOT EDIT.
 
 import (
-        "fmt"
+	"fmt"
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomtag"
 )
+
         """, file=out)
         for m in MESSAGES:
             generate_go_definition(m, out)

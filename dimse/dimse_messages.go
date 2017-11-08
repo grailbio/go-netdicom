@@ -4,11 +4,13 @@ package dimse
 // Code generated from generate_dimse_messages.py. DO NOT EDIT.
 
 import (
-        "fmt"
+	"fmt"
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomtag"
 )
+
         
 type CStoreRq struct {
 	AffectedSOPClassUID string
@@ -22,17 +24,17 @@ type CStoreRq struct {
 }
 
 func (v* CStoreRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(1))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageID, v.MessageID)
-	encodeField(e, dicom.TagPriority, v.Priority)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
-	encodeField(e, dicom.TagAffectedSOPInstanceUID, v.AffectedSOPInstanceUID)
+	encodeField(e, dicomtag.CommandField, uint16(1))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageID, v.MessageID)
+	encodeField(e, dicomtag.Priority, v.Priority)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.AffectedSOPInstanceUID, v.AffectedSOPInstanceUID)
 	if v.MoveOriginatorApplicationEntityTitle != "" {
-		encodeField(e, dicom.TagMoveOriginatorApplicationEntityTitle, v.MoveOriginatorApplicationEntityTitle)
+		encodeField(e, dicomtag.MoveOriginatorApplicationEntityTitle, v.MoveOriginatorApplicationEntityTitle)
 	}
 	if v.MoveOriginatorMessageID != 0 {
-		encodeField(e, dicom.TagMoveOriginatorMessageID, v.MoveOriginatorMessageID)
+		encodeField(e, dicomtag.MoveOriginatorMessageID, v.MoveOriginatorMessageID)
 	}
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
@@ -57,13 +59,13 @@ func (v* CStoreRq) String() string {
 
 func decodeCStoreRq(d *messageDecoder) *CStoreRq {
 	v := &CStoreRq{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageID = d.getUInt16(dicom.TagMessageID, requiredElement)
-	v.Priority = d.getUInt16(dicom.TagPriority, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
-	v.AffectedSOPInstanceUID = d.getString(dicom.TagAffectedSOPInstanceUID, requiredElement)
-	v.MoveOriginatorApplicationEntityTitle = d.getString(dicom.TagMoveOriginatorApplicationEntityTitle, optionalElement)
-	v.MoveOriginatorMessageID = d.getUInt16(dicom.TagMoveOriginatorMessageID, optionalElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageID = d.getUInt16(dicomtag.MessageID, requiredElement)
+	v.Priority = d.getUInt16(dicomtag.Priority, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
+	v.AffectedSOPInstanceUID = d.getString(dicomtag.AffectedSOPInstanceUID, requiredElement)
+	v.MoveOriginatorApplicationEntityTitle = d.getString(dicomtag.MoveOriginatorApplicationEntityTitle, optionalElement)
+	v.MoveOriginatorMessageID = d.getUInt16(dicomtag.MoveOriginatorMessageID, optionalElement)
 	v.Extra = d.unparsedElements()
 	return v
 }
@@ -77,11 +79,11 @@ type CStoreRsp struct {
 }
 
 func (v* CStoreRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(32769))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
-	encodeField(e, dicom.TagAffectedSOPInstanceUID, v.AffectedSOPInstanceUID)
+	encodeField(e, dicomtag.CommandField, uint16(32769))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.AffectedSOPInstanceUID, v.AffectedSOPInstanceUID)
 	encodeStatus(e, v.Status)
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
@@ -106,10 +108,10 @@ func (v* CStoreRsp) String() string {
 
 func decodeCStoreRsp(d *messageDecoder) *CStoreRsp {
 	v := &CStoreRsp{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageIDBeingRespondedTo = d.getUInt16(dicom.TagMessageIDBeingRespondedTo, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
-	v.AffectedSOPInstanceUID = d.getString(dicom.TagAffectedSOPInstanceUID, requiredElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageIDBeingRespondedTo = d.getUInt16(dicomtag.MessageIDBeingRespondedTo, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
+	v.AffectedSOPInstanceUID = d.getString(dicomtag.AffectedSOPInstanceUID, requiredElement)
 	v.Status = d.getStatus()
 	v.Extra = d.unparsedElements()
 	return v
@@ -123,11 +125,11 @@ type CFindRq struct {
 }
 
 func (v* CFindRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(32))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageID, v.MessageID)
-	encodeField(e, dicom.TagPriority, v.Priority)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(32))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageID, v.MessageID)
+	encodeField(e, dicomtag.Priority, v.Priority)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
 	}
@@ -151,10 +153,10 @@ func (v* CFindRq) String() string {
 
 func decodeCFindRq(d *messageDecoder) *CFindRq {
 	v := &CFindRq{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageID = d.getUInt16(dicom.TagMessageID, requiredElement)
-	v.Priority = d.getUInt16(dicom.TagPriority, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageID = d.getUInt16(dicomtag.MessageID, requiredElement)
+	v.Priority = d.getUInt16(dicomtag.Priority, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
 	v.Extra = d.unparsedElements()
 	return v
 }
@@ -167,10 +169,10 @@ type CFindRsp struct {
 }
 
 func (v* CFindRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(32800))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(32800))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	encodeStatus(e, v.Status)
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
@@ -195,9 +197,9 @@ func (v* CFindRsp) String() string {
 
 func decodeCFindRsp(d *messageDecoder) *CFindRsp {
 	v := &CFindRsp{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageIDBeingRespondedTo = d.getUInt16(dicom.TagMessageIDBeingRespondedTo, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageIDBeingRespondedTo = d.getUInt16(dicomtag.MessageIDBeingRespondedTo, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
 	v.Status = d.getStatus()
 	v.Extra = d.unparsedElements()
 	return v
@@ -211,11 +213,11 @@ type CGetRq struct {
 }
 
 func (v* CGetRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(16))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageID, v.MessageID)
-	encodeField(e, dicom.TagPriority, v.Priority)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(16))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageID, v.MessageID)
+	encodeField(e, dicomtag.Priority, v.Priority)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
 	}
@@ -239,10 +241,10 @@ func (v* CGetRq) String() string {
 
 func decodeCGetRq(d *messageDecoder) *CGetRq {
 	v := &CGetRq{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageID = d.getUInt16(dicom.TagMessageID, requiredElement)
-	v.Priority = d.getUInt16(dicom.TagPriority, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageID = d.getUInt16(dicomtag.MessageID, requiredElement)
+	v.Priority = d.getUInt16(dicomtag.Priority, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
 	v.Extra = d.unparsedElements()
 	return v
 }
@@ -259,21 +261,21 @@ type CGetRsp struct {
 }
 
 func (v* CGetRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(32784))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(32784))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	if v.NumberOfRemainingSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations)
+		encodeField(e, dicomtag.NumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations)
 	}
 	if v.NumberOfCompletedSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations)
+		encodeField(e, dicomtag.NumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations)
 	}
 	if v.NumberOfFailedSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfFailedSuboperations, v.NumberOfFailedSuboperations)
+		encodeField(e, dicomtag.NumberOfFailedSuboperations, v.NumberOfFailedSuboperations)
 	}
 	if v.NumberOfWarningSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfWarningSuboperations, v.NumberOfWarningSuboperations)
+		encodeField(e, dicomtag.NumberOfWarningSuboperations, v.NumberOfWarningSuboperations)
 	}
 	encodeStatus(e, v.Status)
 	for _, elem := range v.Extra {
@@ -299,13 +301,13 @@ func (v* CGetRsp) String() string {
 
 func decodeCGetRsp(d *messageDecoder) *CGetRsp {
 	v := &CGetRsp{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageIDBeingRespondedTo = d.getUInt16(dicom.TagMessageIDBeingRespondedTo, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
-	v.NumberOfRemainingSuboperations = d.getUInt16(dicom.TagNumberOfRemainingSuboperations, optionalElement)
-	v.NumberOfCompletedSuboperations = d.getUInt16(dicom.TagNumberOfCompletedSuboperations, optionalElement)
-	v.NumberOfFailedSuboperations = d.getUInt16(dicom.TagNumberOfFailedSuboperations, optionalElement)
-	v.NumberOfWarningSuboperations = d.getUInt16(dicom.TagNumberOfWarningSuboperations, optionalElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageIDBeingRespondedTo = d.getUInt16(dicomtag.MessageIDBeingRespondedTo, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
+	v.NumberOfRemainingSuboperations = d.getUInt16(dicomtag.NumberOfRemainingSuboperations, optionalElement)
+	v.NumberOfCompletedSuboperations = d.getUInt16(dicomtag.NumberOfCompletedSuboperations, optionalElement)
+	v.NumberOfFailedSuboperations = d.getUInt16(dicomtag.NumberOfFailedSuboperations, optionalElement)
+	v.NumberOfWarningSuboperations = d.getUInt16(dicomtag.NumberOfWarningSuboperations, optionalElement)
 	v.Status = d.getStatus()
 	v.Extra = d.unparsedElements()
 	return v
@@ -320,12 +322,12 @@ type CMoveRq struct {
 }
 
 func (v* CMoveRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(33))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageID, v.MessageID)
-	encodeField(e, dicom.TagPriority, v.Priority)
-	encodeField(e, dicom.TagMoveDestination, v.MoveDestination)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(33))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageID, v.MessageID)
+	encodeField(e, dicomtag.Priority, v.Priority)
+	encodeField(e, dicomtag.MoveDestination, v.MoveDestination)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
 	}
@@ -349,11 +351,11 @@ func (v* CMoveRq) String() string {
 
 func decodeCMoveRq(d *messageDecoder) *CMoveRq {
 	v := &CMoveRq{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageID = d.getUInt16(dicom.TagMessageID, requiredElement)
-	v.Priority = d.getUInt16(dicom.TagPriority, requiredElement)
-	v.MoveDestination = d.getString(dicom.TagMoveDestination, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageID = d.getUInt16(dicomtag.MessageID, requiredElement)
+	v.Priority = d.getUInt16(dicomtag.Priority, requiredElement)
+	v.MoveDestination = d.getString(dicomtag.MoveDestination, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
 	v.Extra = d.unparsedElements()
 	return v
 }
@@ -370,21 +372,21 @@ type CMoveRsp struct {
 }
 
 func (v* CMoveRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(32801))
-	encodeField(e, dicom.TagAffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicom.TagMessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(32801))
+	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
+	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	if v.NumberOfRemainingSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations)
+		encodeField(e, dicomtag.NumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations)
 	}
 	if v.NumberOfCompletedSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations)
+		encodeField(e, dicomtag.NumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations)
 	}
 	if v.NumberOfFailedSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfFailedSuboperations, v.NumberOfFailedSuboperations)
+		encodeField(e, dicomtag.NumberOfFailedSuboperations, v.NumberOfFailedSuboperations)
 	}
 	if v.NumberOfWarningSuboperations != 0 {
-		encodeField(e, dicom.TagNumberOfWarningSuboperations, v.NumberOfWarningSuboperations)
+		encodeField(e, dicomtag.NumberOfWarningSuboperations, v.NumberOfWarningSuboperations)
 	}
 	encodeStatus(e, v.Status)
 	for _, elem := range v.Extra {
@@ -410,13 +412,13 @@ func (v* CMoveRsp) String() string {
 
 func decodeCMoveRsp(d *messageDecoder) *CMoveRsp {
 	v := &CMoveRsp{}
-	v.AffectedSOPClassUID = d.getString(dicom.TagAffectedSOPClassUID, requiredElement)
-	v.MessageIDBeingRespondedTo = d.getUInt16(dicom.TagMessageIDBeingRespondedTo, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
-	v.NumberOfRemainingSuboperations = d.getUInt16(dicom.TagNumberOfRemainingSuboperations, optionalElement)
-	v.NumberOfCompletedSuboperations = d.getUInt16(dicom.TagNumberOfCompletedSuboperations, optionalElement)
-	v.NumberOfFailedSuboperations = d.getUInt16(dicom.TagNumberOfFailedSuboperations, optionalElement)
-	v.NumberOfWarningSuboperations = d.getUInt16(dicom.TagNumberOfWarningSuboperations, optionalElement)
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
+	v.MessageIDBeingRespondedTo = d.getUInt16(dicomtag.MessageIDBeingRespondedTo, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
+	v.NumberOfRemainingSuboperations = d.getUInt16(dicomtag.NumberOfRemainingSuboperations, optionalElement)
+	v.NumberOfCompletedSuboperations = d.getUInt16(dicomtag.NumberOfCompletedSuboperations, optionalElement)
+	v.NumberOfFailedSuboperations = d.getUInt16(dicomtag.NumberOfFailedSuboperations, optionalElement)
+	v.NumberOfWarningSuboperations = d.getUInt16(dicomtag.NumberOfWarningSuboperations, optionalElement)
 	v.Status = d.getStatus()
 	v.Extra = d.unparsedElements()
 	return v
@@ -428,9 +430,9 @@ type CEchoRq struct {
 }
 
 func (v* CEchoRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(48))
-	encodeField(e, dicom.TagMessageID, v.MessageID)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(48))
+	encodeField(e, dicomtag.MessageID, v.MessageID)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
 	}
@@ -454,8 +456,8 @@ func (v* CEchoRq) String() string {
 
 func decodeCEchoRq(d *messageDecoder) *CEchoRq {
 	v := &CEchoRq{}
-	v.MessageID = d.getUInt16(dicom.TagMessageID, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
+	v.MessageID = d.getUInt16(dicomtag.MessageID, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
 	v.Extra = d.unparsedElements()
 	return v
 }
@@ -467,9 +469,9 @@ type CEchoRsp struct {
 }
 
 func (v* CEchoRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicom.TagCommandField, uint16(32816))
-	encodeField(e, dicom.TagMessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicom.TagCommandDataSetType, v.CommandDataSetType)
+	encodeField(e, dicomtag.CommandField, uint16(32816))
+	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
+	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
 	encodeStatus(e, v.Status)
 	for _, elem := range v.Extra {
 		dicom.WriteElement(e, elem)
@@ -494,8 +496,8 @@ func (v* CEchoRsp) String() string {
 
 func decodeCEchoRsp(d *messageDecoder) *CEchoRsp {
 	v := &CEchoRsp{}
-	v.MessageIDBeingRespondedTo = d.getUInt16(dicom.TagMessageIDBeingRespondedTo, requiredElement)
-	v.CommandDataSetType = d.getUInt16(dicom.TagCommandDataSetType, requiredElement)
+	v.MessageIDBeingRespondedTo = d.getUInt16(dicomtag.MessageIDBeingRespondedTo, requiredElement)
+	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
 	v.Status = d.getStatus()
 	v.Extra = d.unparsedElements()
 	return v

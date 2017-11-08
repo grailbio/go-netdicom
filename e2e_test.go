@@ -10,6 +10,7 @@ import (
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom/dimse"
 	"github.com/grailbio/go-netdicom/sopclass"
@@ -57,9 +58,9 @@ func onCStoreRequest(
 	e := dicomio.NewBytesEncoder(nil, dicomio.UnknownVR)
 	dicom.WriteFileHeader(e,
 		[]*dicom.Element{
-			dicom.MustNewElement(dicom.TagTransferSyntaxUID, transferSyntaxUID),
-			dicom.MustNewElement(dicom.TagMediaStorageSOPClassUID, sopClassUID),
-			dicom.MustNewElement(dicom.TagMediaStorageSOPInstanceUID, sopInstanceUID),
+			dicom.MustNewElement(dicomtag.TransferSyntaxUID, transferSyntaxUID),
+			dicom.MustNewElement(dicomtag.MediaStorageSOPClassUID, sopClassUID),
+			dicom.MustNewElement(dicomtag.MediaStorageSOPInstanceUID, sopInstanceUID),
 		})
 	e.WriteBytes(data)
 	cstoreData = e.Bytes()
@@ -76,13 +77,13 @@ func onCFindRequest(
 	found := 0
 	for _, elem := range filters {
 		vlog.Infof("Filter %v", elem)
-		if elem.Tag == dicom.TagQueryRetrieveLevel {
+		if elem.Tag == dicomtag.QueryRetrieveLevel {
 			if elem.MustGetString() != "PATIENT" {
 				vlog.Fatalf("Wrong QR level: %v", elem)
 			}
 			found++
 		}
-		if elem.Tag == dicom.TagPatientName {
+		if elem.Tag == dicomtag.PatientName {
 			if elem.MustGetString() != "foohah" {
 				vlog.Fatalf("Wrong patient name: %v", elem)
 			}
@@ -93,10 +94,10 @@ func onCFindRequest(
 		vlog.Fatalf("Didn't find expected filters: %v", filters)
 	}
 	ch <- CFindResult{
-		Elements: []*dicom.Element{dicom.MustNewElement(dicom.TagPatientName, "johndoe")},
+		Elements: []*dicom.Element{dicom.MustNewElement(dicomtag.PatientName, "johndoe")},
 	}
 	ch <- CFindResult{
-		Elements: []*dicom.Element{dicom.MustNewElement(dicom.TagPatientName, "johndoe2")},
+		Elements: []*dicom.Element{dicom.MustNewElement(dicomtag.PatientName, "johndoe2")},
 	}
 	close(ch)
 }
@@ -123,7 +124,7 @@ func checkFileBodiesEqual(t *testing.T, in, out *dicom.DataSet) {
 	var removeMetaElems = func(f *dicom.DataSet) []*dicom.Element {
 		var elems []*dicom.Element
 		for _, elem := range f.Elements {
-			if elem.Tag.Group != dicom.TagMetadataGroup {
+			if elem.Tag.Group != dicomtag.MetadataGroup {
 				elems = append(elems, elem)
 			}
 		}
@@ -258,7 +259,7 @@ func TestFind(t *testing.T) {
 	su := mustNewServiceUser(t, sopclass.QRFindClasses)
 	defer su.Release()
 	filter := []*dicom.Element{
-		dicom.MustNewElement(dicom.TagPatientName, "foohah"),
+		dicom.MustNewElement(dicomtag.PatientName, "foohah"),
 	}
 	var namesFound []string
 
@@ -269,7 +270,7 @@ func TestFind(t *testing.T) {
 			continue
 		}
 		for _, elem := range result.Elements {
-			if elem.Tag != dicom.TagPatientName {
+			if elem.Tag != dicomtag.PatientName {
 				t.Error(elem)
 			}
 			namesFound = append(namesFound, elem.MustGetString())
@@ -284,7 +285,7 @@ func TestCGet(t *testing.T) {
 	su := mustNewServiceUser(t, sopclass.QRGetClasses)
 	defer su.Release()
 	filter := []*dicom.Element{
-		dicom.MustNewElement(dicom.TagPatientName, "foohah"),
+		dicom.MustNewElement(dicomtag.PatientName, "foohah"),
 	}
 
 	var cgetData []byte
@@ -298,9 +299,9 @@ func TestCGet(t *testing.T) {
 			e := dicomio.NewBytesEncoder(nil, dicomio.UnknownVR)
 			dicom.WriteFileHeader(e,
 				[]*dicom.Element{
-					dicom.MustNewElement(dicom.TagTransferSyntaxUID, transferSyntaxUID),
-					dicom.MustNewElement(dicom.TagMediaStorageSOPClassUID, sopClassUID),
-					dicom.MustNewElement(dicom.TagMediaStorageSOPInstanceUID, sopInstanceUID),
+					dicom.MustNewElement(dicomtag.TransferSyntaxUID, transferSyntaxUID),
+					dicom.MustNewElement(dicomtag.MediaStorageSOPClassUID, sopClassUID),
+					dicom.MustNewElement(dicomtag.MediaStorageSOPInstanceUID, sopInstanceUID),
 				})
 			e.WriteBytes(data)
 			cgetData = e.Bytes()

@@ -5,16 +5,19 @@ import (
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom/dimse"
 	"v.io/x/lib/vlog"
 )
 
+// Helper function used by C-{STORE,GET,MOVE} to send a dataset using C-STORE
+// over an already-established association.
 func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEvent,
 	cm *contextManager,
 	messageID uint16,
 	ds *dicom.DataSet) error {
-	var getElement = func(tag dicom.Tag) (string, error) {
+	var getElement = func(tag dicomtag.Tag) (string, error) {
 		elem, err := ds.FindElementByTag(tag)
 		if err != nil {
 			return "", fmt.Errorf("C-STORE data lacks %s: %v", tag.String(), err)
@@ -25,11 +28,11 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 		}
 		return s, nil
 	}
-	sopInstanceUID, err := getElement(dicom.TagMediaStorageSOPInstanceUID)
+	sopInstanceUID, err := getElement(dicomtag.MediaStorageSOPInstanceUID)
 	if err != nil {
 		return fmt.Errorf("C-STORE data lacks SOPInstanceUID: %v", err)
 	}
-	sopClassUID, err := getElement(dicom.TagMediaStorageSOPClassUID)
+	sopClassUID, err := getElement(dicomtag.MediaStorageSOPClassUID)
 	if err != nil {
 		return fmt.Errorf("C-STORE data lacks MediaStorageSOPClassUID: %v", err)
 	}
@@ -45,7 +48,7 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 		sopInstanceUID)
 	bodyEncoder := dicomio.NewBytesEncoderWithTransferSyntax(context.transferSyntaxUID)
 	for _, elem := range ds.Elements {
-		if elem.Tag.Group == dicom.TagMetadataGroup {
+		if elem.Tag.Group == dicomtag.MetadataGroup {
 			continue
 		}
 		dicom.WriteElement(bodyEncoder, elem)
