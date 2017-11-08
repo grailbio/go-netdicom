@@ -258,10 +258,12 @@ func addContextMapping(
 	vlog.VI(2).Infof("Map context %d -> %s, %s",
 		contextID, dicomuid.UIDString(abstractSyntaxUID),
 		dicomuid.UIDString(transferSyntaxUID))
-	doassert(abstractSyntaxUID != "", abstractSyntaxUID)
-	doassert(transferSyntaxUID != "", transferSyntaxUID)
-	doassert(contextID%2 == 1, contextID)
 	doassert(result >= 0 && result <= 4, result)
+	doassert(contextID%2 == 1, contextID)
+	if result == 0 {
+		doassert(abstractSyntaxUID != "", abstractSyntaxUID)
+		doassert(transferSyntaxUID != "", transferSyntaxUID)
+	}
 	e := &contextManagerEntry{
 		abstractSyntaxUID: abstractSyntaxUID,
 		transferSyntaxUID: transferSyntaxUID,

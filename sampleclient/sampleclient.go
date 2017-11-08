@@ -8,6 +8,7 @@ import (
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-netdicom"
 	"github.com/grailbio/go-netdicom/sopclass"
+	"github.com/grailbio/go-netdicom/dimse"
 	"v.io/x/lib/vlog"
 )
 
@@ -17,6 +18,7 @@ var (
 	aeTitleFlag       = flag.String("ae-title", "testclient", "AE title of the client")
 	remoteAETitleFlag = flag.String("remote-ae-title", "testserver", "AE title of the server")
 	findFlag          = flag.String("find", "", "If nonempty, issue a C-FIND.")
+	getFlag           = flag.String("get", "", "If nonempty, issue a C-GET.")
 )
 
 func newServiceUser(sopClasses []string) *netdicom.ServiceUser {
@@ -27,7 +29,6 @@ func newServiceUser(sopClasses []string) *netdicom.ServiceUser {
 	if err != nil {
 		vlog.Fatal(err)
 	}
-	defer su.Release()
 	vlog.Infof("Connecting to %s", *serverFlag)
 	su.Connect(*serverFlag)
 	return su
@@ -47,8 +48,27 @@ func cStore(inPath string) {
 	vlog.Infof("C-STORE finished successfully")
 }
 
+func cGet(argStr string) {
+	su := newServiceUser(sopclass.QRGetClasses)
+	defer su.Release()
+	args := []*dicom.Element{
+		dicom.MustNewElement(dicomtag.PatientID, "PAT004"),
+	}
+
+	n := 0
+	err := su.CGet(netdicom.QRLevelPatient,
+		args,
+		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
+			vlog.Infof("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",
+				n, transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
+			n++
+			return dimse.Success
+		})
+	vlog.Infof("C-GET finished: %v", err)
+}
+
 func cFind(argStr string) {
-	su := newServiceUser(sopclass.StorageClasses)
+	su := newServiceUser(sopclass.QRFindClasses)
 	defer su.Release()
 	args := []*dicom.Element{
 		dicom.MustNewElement(dicomtag.SpecificCharacterSet, "ISO_IR 100"),
@@ -88,6 +108,8 @@ func main() {
 		cStore(*storeFlag)
 	} else if *findFlag != "" {
 		cFind(*findFlag)
+	} else if *getFlag != "" {
+		cGet(*getFlag)
 	} else {
 		vlog.Fatal("Either -store or -find must be set")
 	}

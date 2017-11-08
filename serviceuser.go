@@ -106,8 +106,6 @@ func NewServiceUser(params ServiceUserParams) (*ServiceUser, error) {
 	}
 	mu := &sync.Mutex{}
 	su := &ServiceUser{
-		// sm: NewStateMachineForServiceUser(params, nil, nil),
-		// downcallCh: make(chan stateEvent, 128),
 		upcallCh: make(chan upcallEvent, 128),
 		disp:     newServiceDispatcher(),
 		mu:       mu,

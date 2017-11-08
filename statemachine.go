@@ -348,7 +348,7 @@ var actionDt2 = &stateAction{"DT-2", "Send P-DATA indication primitive",
 		contextID, command, data, err := sm.commandAssembler.AddDataPDU(event.pdu.(*pdu.PDataTf))
 		if err == nil {
 			if command != nil { // All fragments received
-				vlog.VI(2).Infof("%s: DIMSE request: %v", sm.label, command)
+				vlog.VI(1).Infof("%s: DIMSE request: %v", sm.label, command)
 				sm.upcallCh <- upcallEvent{
 					eventType: upcallEventData,
 					cm:        sm.contextManager,

@@ -166,12 +166,18 @@ const (
 	StatusPending               StatusCode = 0xff00
 
 	// C-STORE-specific status codes. P3.4 GG4-1
-	CStoreStatusOutOfResources              StatusCode = 0xa700
-	CStoreStatusDataSetDoesNotMatchSOPClass StatusCode = 0xa900
-	CStoreStatusCannotUnderstand            StatusCode = 0xc000
+	CStoreOutOfResources              StatusCode = 0xa700
+	CStoreCannotUnderstand            StatusCode = 0xc000
+	CStoreDataSetDoesNotMatchSOPClass StatusCode = 0xa900
 
 	// C-FIND-specific status codes.
 	CFindUnableToProcess StatusCode = 0xc000
+
+	// C-MOVE/C-GET-specific status codes.
+	CMoveOutOfResourcesUnableToCalculateNumberOfMatches StatusCode = 0xa701
+	CMoveOutOfResourcesUnableToPerformSubOperations     StatusCode = 0xa702
+	CMoveMoveDestinationUnknown                         StatusCode = 0xa801
+	CMoveDataSetDoesNotMatchSOPClass                    StatusCode = 0xa900
 
 	// Warning codes.
 	StatusAttributeValueOutOfRange StatusCode = 0x0116
