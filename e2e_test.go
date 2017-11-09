@@ -3,7 +3,10 @@ package netdicom
 import (
 	"errors"
 	"flag"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -14,6 +17,9 @@ import (
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom/dimse"
 	"github.com/grailbio/go-netdicom/sopclass"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"os/exec"
 	"v.io/x/lib/vlog"
 )
 
@@ -108,7 +114,7 @@ func onCGetRequest(
 	filters []*dicom.Element,
 	ch chan CMoveResult) {
 	vlog.Infof("Received cget request")
-	path := "testdata/IM-0001-0003.dcm"
+	path := "testdata/reportsi.dcm"
 	dataset := mustReadDICOMFile(path)
 	ch <- CMoveResult{
 		Remaining: -1,
@@ -121,6 +127,13 @@ func onCGetRequest(
 // Check that two datasets, "in" and "out" are the same, except for metadata
 // elements.
 func checkFileBodiesEqual(t *testing.T, in, out *dicom.DataSet) {
+	// DCMTK arbitrarily changes the sequences and items to use
+	// undefined-length encoding, so ignore such diffs.
+	var normalize = func(s string) string {
+		s = strings.Replace(s, "NA u", "NA ", -1)
+		s = strings.Replace(s, "SQ u", "SQ ", -1)
+		return s
+	}
 	var removeMetaElems = func(f *dicom.DataSet) []*dicom.Element {
 		var elems []*dicom.Element
 		for _, elem := range f.Elements {
@@ -133,12 +146,10 @@ func checkFileBodiesEqual(t *testing.T, in, out *dicom.DataSet) {
 
 	inElems := removeMetaElems(in)
 	outElems := removeMetaElems(out)
-	if len(inElems) != len(outElems) {
-		t.Errorf("Wrong # of elems: in %d, out %d", len(inElems), len(outElems))
-	}
+	assert.Equal(t, len(inElems), len(outElems))
 	for i := 0; i < len(inElems); i++ {
-		ins := inElems[i].String()
-		outs := outElems[i].String()
+		ins := normalize(inElems[i].String())
+		outs := normalize(outElems[i].String())
 		if ins != outs {
 			t.Errorf("%dth element mismatch: %v <-> %v", i, ins, outs)
 		}
@@ -167,9 +178,7 @@ func mustReadDICOMFile(path string) *dicom.DataSet {
 
 func mustNewServiceUser(t *testing.T, sopClasses []string) *ServiceUser {
 	su, err := NewServiceUser(ServiceUserParams{SOPClasses: sopClasses})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	vlog.Infof("Connecting to %v", provider.ListenAddr().String())
 	su.Connect(provider.ListenAddr().String())
 	return su
@@ -204,6 +213,54 @@ func TestStoreFailure0(t *testing.T) {
 	if err == nil || strings.Index(err.Error(), "Foohah") < 0 {
 		vlog.Fatal(err)
 	}
+}
+
+func getProviderPort() string {
+	match := regexp.MustCompile("(\\d+)$").FindStringSubmatch(provider.ListenAddr().String())
+	return match[1]
+}
+
+// Test using "storescu" command from dcmtk.
+func TestDCMTKCStore(t *testing.T) {
+	storescuPath, err := exec.LookPath("storescu")
+	if err != nil {
+		t.Skip("storescu not found.")
+		return
+	}
+	cstoreData = nil
+	cmd := exec.Command(storescuPath, "localhost", getProviderPort(), "testdata/reportsi.dcm")
+	require.NoError(t, cmd.Run())
+
+	require.True(t, len(cstoreData) > 0, "No data received")
+	ds, err := dicom.ReadDataSetInBytes(cstoreData, dicom.ReadOptions{})
+	require.NoError(t, err)
+	expected := mustReadDICOMFile("testdata/reportsi.dcm")
+	checkFileBodiesEqual(t, expected, ds)
+}
+
+// Test using "getscu" command from dcmtk.
+func TestDCMTKCGet(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	getscuPath, err := exec.LookPath("getscu")
+	if err != nil {
+		t.Skip("getscu not found.")
+		return
+	}
+	vlog.Errorf("PORT is %v %v", getProviderPort(), tempDir)
+	cmd := exec.Command(getscuPath, "localhost", getProviderPort(), "-od", tempDir, "-k", "0010,0020=foo" /*not used*/)
+	require.NoError(t, cmd.Run())
+	require.NoError(t, err)
+
+	files, err := ioutil.ReadDir(tempDir)
+	require.NoError(t, err)
+	require.Equal(t, len(files), 1)
+	t.Logf("Found C-GET file %v/%v", tempDir, files[0].Name())
+	expected := mustReadDICOMFile("testdata/reportsi.dcm")
+	ds, err := dicom.ReadDataSetFromFile(filepath.Join(tempDir, files[0].Name()), dicom.ReadOptions{})
+	require.NoError(t, err)
+	checkFileBodiesEqual(t, expected, ds)
 }
 
 type testFaultInjector struct {
@@ -293,9 +350,7 @@ func TestCGet(t *testing.T) {
 	err := su.CGet(QRLevelPatient, filter,
 		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
 			vlog.Infof("Got data: %v %v %v %d bytes", transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
-			if len(cgetData) > 0 {
-				t.Fatal("Received multiple C-GET responses")
-			}
+			require.True(t, len(cgetData) == 0, "Received multiple C-GET responses")
 			e := dicomio.NewBytesEncoder(nil, dicomio.UnknownVR)
 			dicom.WriteFileHeader(e,
 				[]*dicom.Element{
@@ -307,35 +362,25 @@ func TestCGet(t *testing.T) {
 			cgetData = e.Bytes()
 			return dimse.Success
 		})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(cgetData) == 0 {
-		t.Fatal("No data received")
-	}
+	require.NoError(t, err)
+	require.True(t, len(cgetData) > 0, "No data received")
 	ds, err := dicom.ReadDataSetInBytes(cgetData, dicom.ReadOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := mustReadDICOMFile("testdata/IM-0001-0003.dcm")
+	require.NoError(t, err)
+	expected := mustReadDICOMFile("testdata/reportsi.dcm")
 	checkFileBodiesEqual(t, expected, ds)
 }
 
 func TestReleaseWithoutConnect(t *testing.T) {
 	su, err := NewServiceUser(ServiceUserParams{
 		SOPClasses: sopclass.StorageClasses})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	su.Release()
 }
 
 func TestNonexistentServer(t *testing.T) {
 	su, err := NewServiceUser(ServiceUserParams{
 		SOPClasses: sopclass.StorageClasses})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer su.Release()
 	su.Connect(":99999")
 	err = su.CStore(mustReadDICOMFile("testdata/IM-0001-0003.dcm"))
