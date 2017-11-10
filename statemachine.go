@@ -447,9 +447,9 @@ var actionAr10 = &stateAction{"AR-10", "Issue A-RELEASE confimation primitive",
 // Association abort related actions
 var actionAa1 = &stateAction{"AA-1", "Send A-ABORT PDU (service-user source) and start (or restart if already started) ARTIM timer",
 	func(sm *stateMachine, event stateEvent) stateType {
-		diagnostic := byte(0)
+		diagnostic := pdu.AbortReasonType(0)
 		if sm.currentState == sta02 {
-			diagnostic = 2
+			diagnostic = pdu.AbortReasonUnexpectedPDU
 		}
 		sendPDU(sm, &pdu.AAbort{Source: 0, Reason: diagnostic})
 		restartTimer(sm)
@@ -841,6 +841,7 @@ func networkReaderThread(ch chan stateEvent, conn net.Conn, maxPDUSize int, smNa
 			}
 			continue
 		case *pdu.AAssociateRj:
+			vlog.Errorf("%v: Association rejected: %v", smName, v.String())
 			ch <- stateEvent{event: evt04, pdu: n, err: nil}
 			continue
 		case *pdu.PDataTf:
@@ -853,6 +854,7 @@ func networkReaderThread(ch chan stateEvent, conn net.Conn, maxPDUSize int, smNa
 			ch <- stateEvent{event: evt13, pdu: n, err: nil}
 			continue
 		case *pdu.AAbort:
+			vlog.Errorf("%v: Association aborted: %v", smName, v.String())
 			ch <- stateEvent{event: evt16, pdu: n, err: nil}
 			continue
 		default:

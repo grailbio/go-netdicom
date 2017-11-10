@@ -302,12 +302,17 @@ func encodeQRPayload(opType qrOpType, qrLevel QRLevel, filter []*dicom.Element, 
 
 	// Encode the data payload containing the filtering conditions.
 	dataEncoder := dicomio.NewBytesEncoderWithTransferSyntax(context.transferSyntaxUID)
-	dicom.WriteElement(dataEncoder, dicom.MustNewElement(dicomtag.QueryRetrieveLevel, qrLevelString))
+	foundQRLevel := false
 	for _, elem := range filter {
 		if elem.Tag == dicomtag.QueryRetrieveLevel {
-			// This tag is auto-computed from qrlevel.
-			return context, nil, fmt.Errorf("%v: tag must not be in the C-FIND payload (it is derived from qrLevel)", elem.Tag)
+			foundQRLevel = true
 		}
+		dicom.WriteElement(dataEncoder, elem)
+		vlog.VI(2).Infof("Add QR payload: %v", elem)
+	}
+	if !foundQRLevel {
+		elem := dicom.MustNewElement(dicomtag.QueryRetrieveLevel, qrLevelString)
+		vlog.VI(2).Infof("Add QR payload: %v", elem)
 		dicom.WriteElement(dataEncoder, elem)
 	}
 	if err := dataEncoder.Error(); err != nil {

@@ -7,8 +7,8 @@ import (
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-netdicom"
-	"github.com/grailbio/go-netdicom/sopclass"
 	"github.com/grailbio/go-netdicom/dimse"
+	"github.com/grailbio/go-netdicom/sopclass"
 	"v.io/x/lib/vlog"
 )
 
@@ -23,8 +23,8 @@ var (
 
 func newServiceUser(sopClasses []string) *netdicom.ServiceUser {
 	su, err := netdicom.NewServiceUser(netdicom.ServiceUserParams{
-		CalledAETitle:  *aeTitleFlag,
-		CallingAETitle: *remoteAETitleFlag,
+		CalledAETitle:  *remoteAETitleFlag,
+		CallingAETitle: *aeTitleFlag,
 		SOPClasses:     sopClasses})
 	if err != nil {
 		vlog.Fatal(err)
@@ -48,15 +48,33 @@ func cStore(inPath string) {
 	vlog.Infof("C-STORE finished successfully")
 }
 
+func cGet1(argStr string) {
+	su := newServiceUser(sopclass.QRGetClasses)
+	defer su.Release()
+	args := []*dicom.Element{
+		dicom.MustNewElement(dicomtag.QueryRetrieveLevel, "SERIES"),
+		dicom.MustNewElement(dicomtag.SeriesInstanceUID, "1.2.840.113681.183783719.1496821562.4928.395"),
+	}
+	n := 0
+	err := su.CGet(netdicom.QRLevelPatient,
+		args,
+		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
+			vlog.Infof("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",
+				n, transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
+			n++
+			return dimse.Success
+		})
+	vlog.Infof("C-GET finished: %v", err)
+}
+
 func cGet(argStr string) {
 	su := newServiceUser(sopclass.QRGetClasses)
 	defer su.Release()
 	args := []*dicom.Element{
-		dicom.MustNewElement(dicomtag.PatientID, "PAT004"),
+		dicom.MustNewElement(dicomtag.StudyInstanceUID, "1.2.840.113681.183783719.1496821562.4928.389"),
 	}
-
 	n := 0
-	err := su.CGet(netdicom.QRLevelPatient,
+	err := su.CGet(netdicom.QRLevelStudy,
 		args,
 		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
 			vlog.Infof("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",

@@ -110,9 +110,9 @@ func (disp *serviceDispatcher) handleEvent(event upcallEvent) {
 	messageID := event.command.GetMessageID()
 	dc, found := disp.findOrCreateCommand(messageID, event.cm, context)
 	if found {
-		vlog.VI(1).Infof("Forwarding command to existing command: %+v", event.command, dc)
+		vlog.VI(1).Infof("Forwarding command to existing command: %+v %+v", event.command, dc)
 		dc.upcallCh <- event
-		vlog.VI(1).Infof("Done forwarding command to existing command: %+v", event.command, dc)
+		vlog.VI(1).Infof("Done forwarding command to existing command: %+v %+v", event.command, dc)
 		return
 	}
 	disp.mu.Lock()

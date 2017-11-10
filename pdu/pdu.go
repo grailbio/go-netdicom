@@ -1,5 +1,12 @@
 package pdu
 
+//go:generate stringer -type AbortReasonType
+//go:generate stringer -type PresentationContextResult
+//go:generate stringer -type RejectReasonType
+//go:generate stringer -type RejectResultType
+//go:generate stringer -type SourceType
+//go:generate stringer -type Type
+
 // Implements message types defined in P3.8. It sits below the DIMSE layer.
 //
 // http://dicom.nema.org/medical/dicom/current/output/pdf/part08.pdf
@@ -338,23 +345,6 @@ const (
 	PresentationContextProviderRejectionTransferSyntaxNotSupported PresentationContextResult = 4
 )
 
-func (p PresentationContextResult) String() string {
-	switch p {
-	case PresentationContextAccepted:
-		return "Accepted"
-	case PresentationContextUserRejection:
-		return "User rejection"
-	case PresentationContextProviderRejectionNoReason:
-		return "Provider rejection (no reason)"
-	case PresentationContextProviderRejectionAbstractSyntaxNotSupported:
-		return "Provider rejection (abstract syntax not supported)"
-	case PresentationContextProviderRejectionTransferSyntaxNotSupported:
-		return "Provider rejection (transfer syntax not supported)"
-	default:
-		return fmt.Sprintf("Unknown presentationcontextresult %d", p)
-	}
-}
-
 // P3.8 9.3.2.2, 9.3.3.2
 type PresentationContextItem struct {
 	Type      byte // ItemTypePresentationContext*
@@ -655,71 +645,89 @@ func (pdu *AAssociate) String() string {
 
 // P3.8 9.3.4
 type AAssociateRj struct {
-	Result byte
-	Source byte
-	Reason byte
+	Result RejectResultType
+	Source SourceType
+	Reason RejectReasonType
 }
 
 // Possible values for AAssociateRj.Result
-const (
-	ResultRejectedPermanent = 1
-	ResultRejectedTransient = 2
-)
+type RejectResultType byte
 
-// Possible values for AAssociateRj.Source
 const (
-	SourceULServiceUser                 = 1
-	SourceULServiceProviderACSE         = 2
-	SourceULServiceProviderPresentation = 3
+	ResultRejectedPermanent RejectResultType = 1
+	ResultRejectedTransient RejectResultType = 2
 )
 
 // Possible values for AAssociateRj.Reason
+type RejectReasonType byte
+
 const (
-	ReasonNone                               = 1
-	ReasonApplicationContextNameNotSupported = 2
+	RejectReasonNone                               RejectReasonType = 1
+	RejectReasonApplicationContextNameNotSupported RejectReasonType = 2
+	RejectReasonCallingAETitleNotRecognized        RejectReasonType = 3
+	RejectReasonCalledAETitleNotRecognized         RejectReasonType = 7
+)
+
+// Possible values for AAssociateRj.Source
+type SourceType byte
+
+const (
+	SourceULServiceUser                 SourceType = 1
+	SourceULServiceProviderACSE         SourceType = 2
+	SourceULServiceProviderPresentation SourceType = 3
 )
 
 func decodeAAssociateRj(d *dicomio.Decoder) *AAssociateRj {
 	pdu := &AAssociateRj{}
 	d.Skip(1) // reserved
-	pdu.Result = d.ReadByte()
-	pdu.Source = d.ReadByte()
-	pdu.Reason = d.ReadByte()
+	pdu.Result = RejectResultType(d.ReadByte())
+	pdu.Source = SourceType(d.ReadByte())
+	pdu.Reason = RejectReasonType(d.ReadByte())
 	return pdu
 }
 
 func (pdu *AAssociateRj) WritePayload(e *dicomio.Encoder) {
 	e.WriteZeros(1)
-	e.WriteByte(pdu.Result)
-	e.WriteByte(pdu.Source)
-	e.WriteByte(pdu.Reason)
+	e.WriteByte(byte(pdu.Result))
+	e.WriteByte(byte(pdu.Source))
+	e.WriteByte(byte(pdu.Reason))
 }
 
 func (pdu *AAssociateRj) String() string {
-	return "A_ASSOCIATE_RJ"
+	return fmt.Sprintf("A_ASSOCIATE_RJ{result: %v, source: %v, reason: %v}", pdu.Result, pdu.Source, pdu.Reason)
 }
 
+type AbortReasonType byte
+
+const (
+	AbortReasonNotSpecified             AbortReasonType = 0
+	AbortReasonUnexpectedPDU            AbortReasonType = 2
+	AbortReasonUnrecognizedPDUParameter AbortReasonType = 3
+	AbortReasonUnexpectedPDUParameter   AbortReasonType = 4
+	AbortReasonInvalidPDUParameterValue AbortReasonType = 5
+)
+
 type AAbort struct {
-	Source byte
-	Reason byte
+	Source SourceType
+	Reason AbortReasonType
 }
 
 func decodeAAbort(d *dicomio.Decoder) *AAbort {
 	pdu := &AAbort{}
 	d.Skip(2)
-	pdu.Source = d.ReadByte()
-	pdu.Reason = d.ReadByte()
+	pdu.Source = SourceType(d.ReadByte())
+	pdu.Reason = AbortReasonType(d.ReadByte())
 	return pdu
 }
 
 func (pdu *AAbort) WritePayload(e *dicomio.Encoder) {
 	e.WriteZeros(2)
-	e.WriteByte(pdu.Source)
-	e.WriteByte(pdu.Reason)
+	e.WriteByte(byte(pdu.Source))
+	e.WriteByte(byte(pdu.Reason))
 }
 
 func (pdu *AAbort) String() string {
-	return fmt.Sprintf("A_ABORT{source:%d reason:%d}", pdu.Source, pdu.Reason)
+	return fmt.Sprintf("A_ABORT{source:%v reason:%v}", pdu.Source, pdu.Reason)
 }
 
 type PDataTf struct {
