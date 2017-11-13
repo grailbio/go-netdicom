@@ -2,6 +2,8 @@ package netdicom
 
 // This file implements the ServiceUser (i.e., a DICOM DIMSE client) class.
 
+//go:generate stringer -type QRLevel
+
 import (
 	"fmt"
 	"net"
@@ -251,6 +253,9 @@ const (
 	// QRLevelStudy chooses Study-Root QR model.  P3.4, C.3.2
 	QRLevelStudy
 
+	// QRLevelSeries chooses Study-Root QR model, but using "SERIES" QueryRetrieveLevel.  P3.4, C.3.2
+	QRLevelSeries
+
 	qrOpCFind qrOpType = iota
 	qrOpCGet
 	qrOpCMove
@@ -277,7 +282,7 @@ func encodeQRPayload(opType qrOpType, qrLevel QRLevel, filter []*dicom.Element, 
 			sopClassUID = dicomuid.PatientRootQRMove
 		}
 		qrLevelString = "PATIENT"
-	case QRLevelStudy:
+	case QRLevelStudy, QRLevelSeries:
 		switch opType {
 		case qrOpCFind:
 			sopClassUID = dicomuid.StudyRootQRFind
@@ -287,6 +292,9 @@ func encodeQRPayload(opType qrOpType, qrLevel QRLevel, filter []*dicom.Element, 
 			sopClassUID = dicomuid.StudyRootQRMove
 		}
 		qrLevelString = "STUDY"
+		if qrLevel == QRLevelSeries {
+			qrLevelString = "SERIES"
+		}
 	default:
 		return contextManagerEntry{}, nil, fmt.Errorf("Invalid C-FIND QR lever: %d", qrLevel)
 	}
@@ -450,8 +458,9 @@ func (su *ServiceUser) CGet(qrLevel QRLevel, filter []*dicom.Element,
 		}
 		if resp.Status.Status != dimse.StatusPending {
 			if resp.Status.Status != 0 {
-				// TODO: report error if status!= 0
-				panic(resp)
+				e := fmt.Errorf("Received C-GET error: %+v", resp)
+				vlog.Error(e)
+				return e
 			}
 			break
 		}

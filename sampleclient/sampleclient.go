@@ -17,8 +17,10 @@ var (
 	storeFlag         = flag.String("store", "", "If set, issue C-STORE to copy this file to the remote server")
 	aeTitleFlag       = flag.String("ae-title", "testclient", "AE title of the client")
 	remoteAETitleFlag = flag.String("remote-ae-title", "testserver", "AE title of the server")
-	findFlag          = flag.String("find", "", "If nonempty, issue a C-FIND.")
-	getFlag           = flag.String("get", "", "If nonempty, issue a C-GET.")
+	findFlag          = flag.Bool("find", false, "Issue a C-FIND.")
+	getFlag           = flag.Bool("get", false, "Issue a C-GET.")
+	seriesFlag        = flag.String("series", "", "Study series UID to retrieve in C-{FIND,GET}.")
+	studyFlag         = flag.String("study", "", "Study instance UID to retrieve in C-{FIND,GET}.")
 )
 
 func newServiceUser(sopClasses []string) *netdicom.ServiceUser {
@@ -48,46 +50,13 @@ func cStore(inPath string) {
 	vlog.Infof("C-STORE finished successfully")
 }
 
-func cGet1(argStr string) {
-	su := newServiceUser(sopclass.QRGetClasses)
-	defer su.Release()
-	args := []*dicom.Element{
-		dicom.MustNewElement(dicomtag.QueryRetrieveLevel, "SERIES"),
-		dicom.MustNewElement(dicomtag.SeriesInstanceUID, "1.2.840.113681.183783719.1496821562.4928.395"),
+func generateCFindElements() (netdicom.QRLevel, []*dicom.Element) {
+	if *seriesFlag != "" {
+		return netdicom.QRLevelSeries, []*dicom.Element{dicom.MustNewElement(dicomtag.SeriesInstanceUID, *seriesFlag)}
 	}
-	n := 0
-	err := su.CGet(netdicom.QRLevelPatient,
-		args,
-		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
-			vlog.Infof("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",
-				n, transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
-			n++
-			return dimse.Success
-		})
-	vlog.Infof("C-GET finished: %v", err)
-}
-
-func cGet(argStr string) {
-	su := newServiceUser(sopclass.QRGetClasses)
-	defer su.Release()
-	args := []*dicom.Element{
-		dicom.MustNewElement(dicomtag.StudyInstanceUID, "1.2.840.113681.183783719.1496821562.4928.389"),
+	if *studyFlag != "" {
+		return netdicom.QRLevelStudy, []*dicom.Element{dicom.MustNewElement(dicomtag.StudyInstanceUID, *studyFlag)}
 	}
-	n := 0
-	err := su.CGet(netdicom.QRLevelStudy,
-		args,
-		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
-			vlog.Infof("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",
-				n, transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
-			n++
-			return dimse.Success
-		})
-	vlog.Infof("C-GET finished: %v", err)
-}
-
-func cFind(argStr string) {
-	su := newServiceUser(sopclass.QRFindClasses)
-	defer su.Release()
 	args := []*dicom.Element{
 		dicom.MustNewElement(dicomtag.SpecificCharacterSet, "ISO_IR 100"),
 		dicom.MustNewElement(dicomtag.AccessionNumber, ""),
@@ -106,7 +75,29 @@ func cFind(argStr string) {
 				dicom.MustNewElement(dicomtag.ScheduledPerformingPhysicianName, ""),
 				dicom.MustNewElement(dicomtag.ScheduledProcedureStepStatus, ""))),
 	}
-	for result := range su.CFind(netdicom.QRLevelStudy, args) {
+	return netdicom.QRLevelPatient, args
+}
+
+func cGet() {
+	su := newServiceUser(sopclass.QRGetClasses)
+	defer su.Release()
+	qrLevel, args := generateCFindElements()
+	n := 0
+	err := su.CGet(qrLevel, args,
+		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
+			vlog.Infof("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",
+				n, transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
+			n++
+			return dimse.Success
+		})
+	vlog.Infof("C-GET finished: %v", err)
+}
+
+func cFind() {
+	su := newServiceUser(sopclass.QRFindClasses)
+	defer su.Release()
+	qrLevel, args := generateCFindElements()
+	for result := range su.CFind(qrLevel, args) {
 		if result.Err != nil {
 			vlog.Errorf("C-FIND error: %v", result.Err)
 			continue
@@ -124,11 +115,11 @@ func main() {
 
 	if *storeFlag != "" {
 		cStore(*storeFlag)
-	} else if *findFlag != "" {
-		cFind(*findFlag)
-	} else if *getFlag != "" {
-		cGet(*getFlag)
+	} else if *findFlag {
+		cFind()
+	} else if *getFlag {
+		cGet()
 	} else {
-		vlog.Fatal("Either -store or -find must be set")
+		vlog.Fatal("Either -store, -get, or -find must be set")
 	}
 }

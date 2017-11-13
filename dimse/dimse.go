@@ -1,6 +1,7 @@
 package dimse
 
 //go:generate ./generate_dimse_messages.py
+//go:generate stringer -type StatusCode
 
 // Implements message types defined in P3.7.
 //
