@@ -226,14 +226,16 @@ func handleCGet(
 			}
 			break
 		}
-		subCs, found := cs.disp.findOrCreateCommand(dimse.NewMessageID(), cs.cm, cs.context /*not used*/)
-		vlog.Infof("C-GET: Sending %v using subcommand wl id:%d", resp.Path, subCs.messageID)
-		if found {
-			panic(subCs)
+		subCs, err := cs.disp.newCommand(cs.cm, cs.context /*not used*/)
+		if err != nil {
+			status = dimse.Status{
+				Status:       dimse.CFindUnableToProcess,
+				ErrorComment: err.Error(),
+			}
+			break
 		}
-		err := runCStoreOnAssociation(subCs.upcallCh, subCs.disp.downcallCh, subCs.cm, subCs.messageID, resp.DataSet)
-		vlog.Infof("C-GET: Done sending %v using subcommand wl id:%d: %v", resp.Path, subCs.messageID, err)
 		defer cs.disp.deleteCommand(subCs)
+		err = runCStoreOnAssociation(subCs.upcallCh, subCs.disp.downcallCh, subCs.cm, subCs.messageID, resp.DataSet)
 		if err != nil {
 			vlog.Errorf("C-GET: C-store of %v failed: %v", resp.Path, err)
 			numFailures++

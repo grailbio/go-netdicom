@@ -187,8 +187,10 @@ func (su *ServiceUser) CEcho() error {
 	if err != nil {
 		return err
 	}
-	cs, found := su.disp.findOrCreateCommand(dimse.NewMessageID(), su.cm, context)
-	doassert(!found)
+	cs, err := su.disp.newCommand(su.cm, context)
+	if err != nil {
+		return err
+	}
 	defer su.disp.deleteCommand(cs)
 	cs.sendMessage(
 		&dimse.CEchoRq{MessageID: cs.messageID,
@@ -229,8 +231,10 @@ func (su *ServiceUser) CStore(ds *dicom.DataSet) error {
 	if err != nil {
 		return err
 	}
-	cs, found := su.disp.findOrCreateCommand(dimse.NewMessageID(), su.cm, context)
-	doassert(!found)
+	cs, err := su.disp.newCommand(su.cm, context)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		vlog.Errorf("C-STORE: sop class %v not found in context %v", sopClassUID, err)
 		return err
@@ -351,8 +355,12 @@ func (su *ServiceUser) CFind(qrLevel QRLevel, filter []*dicom.Element) chan CFin
 		close(ch)
 		return ch
 	}
-	cs, found := su.disp.findOrCreateCommand(dimse.NewMessageID(), su.cm, context)
-	doassert(!found)
+	cs, err := su.disp.newCommand(su.cm, context)
+	if err != nil {
+		ch <- CFindResult{Err: err}
+		close(ch)
+		return ch
+	}
 	go func() {
 		defer close(ch)
 		defer su.disp.deleteCommand(cs)
@@ -415,8 +423,10 @@ func (su *ServiceUser) CGet(qrLevel QRLevel, filter []*dicom.Element,
 	if err != nil {
 		return err
 	}
-	cs, found := su.disp.findOrCreateCommand(dimse.NewMessageID(), su.cm, context)
-	doassert(!found)
+	cs, err := su.disp.newCommand(su.cm, context)
+	if err != nil {
+		return err
+	}
 	defer su.disp.deleteCommand(cs)
 
 	handleCStore := func(msg dimse.Message, data []byte, cs *serviceCommandState) {

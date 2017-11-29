@@ -21,17 +21,17 @@ MESSAGES = [
     Message('CStoreRq',
             Type.REQUEST, 1,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageID', 'uint16', True),
+             Field('MessageID', 'MessageID', True),
              Field('Priority', 'uint16', True),
              Field('CommandDataSetType', 'uint16', True),
              Field('AffectedSOPInstanceUID', 'string', True),
 	     Field('MoveOriginatorApplicationEntityTitle', 'string', False),
-	     Field('MoveOriginatorMessageID', 'uint16', False)]),
+	     Field('MoveOriginatorMessageID', 'MessageID', False)]),
     # P3.7 9.3.1.2
     Message('CStoreRsp',
             Type.RESPONSE, 0x8001,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageIDBeingRespondedTo', 'uint16', True),
+             Field('MessageIDBeingRespondedTo', 'MessageID', True),
              Field('CommandDataSetType', 'uint16', True),
              Field('AffectedSOPInstanceUID', 'string', True),
 	     Field('Status', 'Status', True)]),
@@ -39,26 +39,26 @@ MESSAGES = [
     Message('CFindRq',
             Type.REQUEST, 0x20,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageID', 'uint16', True),
+             Field('MessageID', 'MessageID', True),
              Field('Priority', 'uint16', True),
              Field('CommandDataSetType', 'uint16', True)]),
     Message('CFindRsp',
             Type.RESPONSE, 0x8020,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageIDBeingRespondedTo', 'uint16', True),
+             Field('MessageIDBeingRespondedTo', 'MessageID', True),
              Field('CommandDataSetType', 'uint16', True),
 	     Field('Status', 'Status', True)]),
     # P3.7 9.1.2.1
     Message('CGetRq',
             Type.REQUEST, 0x10,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageID', 'uint16', True),
+             Field('MessageID', 'MessageID', True),
              Field('Priority', 'uint16', True),
              Field('CommandDataSetType', 'uint16', True)]),
     Message('CGetRsp',
             Type.RESPONSE, 0x8010,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageIDBeingRespondedTo', 'uint16', True),
+             Field('MessageIDBeingRespondedTo', 'MessageID', True),
              Field('CommandDataSetType', 'uint16', True),
              Field('NumberOfRemainingSuboperations', 'uint16', False),
              Field('NumberOfCompletedSuboperations', 'uint16', False),
@@ -69,14 +69,14 @@ MESSAGES = [
     Message('CMoveRq',
             Type.REQUEST, 0x21,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageID', 'uint16', True),
+             Field('MessageID', 'MessageID', True),
              Field('Priority', 'uint16', True),
              Field('MoveDestination', 'string', True),
              Field('CommandDataSetType', 'uint16', True)]),
     Message('CMoveRsp',
             Type.RESPONSE, 0x8021,
             [Field('AffectedSOPClassUID', 'string', True),
-             Field('MessageIDBeingRespondedTo', 'uint16', True),
+             Field('MessageIDBeingRespondedTo', 'MessageID', True),
              Field('CommandDataSetType', 'uint16', True),
              Field('NumberOfRemainingSuboperations', 'uint16', False),
              Field('NumberOfCompletedSuboperations', 'uint16', False),
@@ -86,11 +86,11 @@ MESSAGES = [
     # P3.7 9.3.5
     Message('CEchoRq',
             Type.REQUEST, 0x30,
-            [Field('MessageID', 'uint16', True),
+            [Field('MessageID', 'MessageID', True),
              Field('CommandDataSetType', 'uint16', True)]),
     Message('CEchoRsp',
             Type.RESPONSE, 0x8030,
-            [Field('MessageIDBeingRespondedTo', 'uint16', True),
+            [Field('MessageIDBeingRespondedTo', 'MessageID', True),
              Field('CommandDataSetType', 'uint16', True),
 	     Field('Status', 'Status', True)])
 ]
@@ -134,7 +134,7 @@ def generate_go_definition(m: Message, out: IO[str]):
     print('}', file=out)
 
     print('', file=out)
-    print(f'func (v* {m.name}) GetMessageID() uint16 {{', file=out)
+    print(f'func (v* {m.name}) GetMessageID() MessageID {{', file=out)
     if m.type == Type.REQUEST:
         print(f'	return v.MessageID', file=out)
     else:
@@ -168,7 +168,7 @@ def generate_go_definition(m: Message, out: IO[str]):
         else:
             if f.type == 'string':
                 decoder = 'String'
-            elif f.type == 'uint16':
+            elif f.type in ('uint16', 'MessageID'):
                 decoder = 'UInt16'
             elif f.type == 'uint32':
                 decoder = 'UInt32'

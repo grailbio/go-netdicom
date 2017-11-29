@@ -15,7 +15,7 @@ import (
 // over an already-established association.
 func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEvent,
 	cm *contextManager,
-	messageID uint16,
+	messageID dimse.MessageID,
 	ds *dicom.DataSet) error {
 	var getElement = func(tag dicomtag.Tag) (string, error) {
 		elem, err := ds.FindElementByTag(tag)

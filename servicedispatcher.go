@@ -15,12 +15,16 @@ type serviceDispatcher struct {
 	mu sync.Mutex
 
 	// Set of active DIMSE commands running. Keys are message IDs.
-	activeCommands map[uint16]*serviceCommandState // guarded by mu
+	activeCommands map[dimse.MessageID]*serviceCommandState // guarded by mu
 
 	// A callback to be called when a dimse request message arrives. Keys
 	// are DIMSE CommandField. The callback typically creates a new command
 	// by calling findOrCreateCommand.
 	callbacks map[int]serviceCallback // guarded by mu
+
+	// The last message ID used in newCommand(). Used to avoid creating duplicate
+	// IDs.
+	lastMessageID dimse.MessageID
 }
 
 type serviceCallback func(msg dimse.Message, data []byte, cs *serviceCommandState)
@@ -28,7 +32,7 @@ type serviceCallback func(msg dimse.Message, data []byte, cs *serviceCommandStat
 // Per-DIMSE-command state.
 type serviceCommandState struct {
 	disp      *serviceDispatcher  // Parent.
-	messageID uint16              // Command's MessageID.
+	messageID dimse.MessageID     // Command's MessageID.
 	context   contextManagerEntry // Transfersyntax/sopclass for this command.
 	cm        *contextManager     // For looking up context -> transfersyntax/sopclass mappings
 
@@ -53,24 +57,51 @@ func (cs *serviceCommandState) sendMessage(cmd dimse.Message, data []byte) {
 }
 
 func (disp *serviceDispatcher) findOrCreateCommand(
-	messageID uint16,
+	msgID dimse.MessageID,
 	cm *contextManager,
 	context contextManagerEntry) (*serviceCommandState, bool) {
 	disp.mu.Lock()
 	defer disp.mu.Unlock()
-	if cs, ok := disp.activeCommands[messageID]; ok {
+	if cs, ok := disp.activeCommands[msgID]; ok {
 		return cs, true
 	}
 	cs := &serviceCommandState{
 		disp:      disp,
-		messageID: messageID,
+		messageID: msgID,
 		cm:        cm,
 		context:   context,
 		upcallCh:  make(chan upcallEvent, 128),
 	}
-	disp.activeCommands[messageID] = cs
-	vlog.VI(1).Infof("Start provider command %v", messageID)
+	disp.activeCommands[msgID] = cs
+	vlog.VI(1).Infof("Start command %+v", cs)
 	return cs, false
+}
+
+// Create a new serviceCommandState with an unused message ID.  Returns an error
+// if it fails to allocate a message ID.
+func (disp *serviceDispatcher) newCommand(
+	cm *contextManager, context contextManagerEntry) (*serviceCommandState, error) {
+	disp.mu.Lock()
+	defer disp.mu.Unlock()
+
+	for msgID := disp.lastMessageID + 1; msgID != disp.lastMessageID; msgID++ {
+		if _, ok := disp.activeCommands[msgID]; ok {
+			continue
+		}
+
+		cs := &serviceCommandState{
+			disp:      disp,
+			messageID: msgID,
+			cm:        cm,
+			context:   context,
+			upcallCh:  make(chan upcallEvent, 128),
+		}
+		disp.activeCommands[msgID] = cs
+		disp.lastMessageID = msgID
+		vlog.VI(1).Infof("Start new command %+v", cs)
+		return cs, nil
+	}
+	return nil, fmt.Errorf("Failed to allocate a message ID (too many outstading?)")
 }
 
 func (disp *serviceDispatcher) deleteCommand(cs *serviceCommandState) {
@@ -137,7 +168,8 @@ func (disp *serviceDispatcher) close() {
 func newServiceDispatcher() *serviceDispatcher {
 	return &serviceDispatcher{
 		downcallCh:     make(chan stateEvent, 128),
-		activeCommands: make(map[uint16]*serviceCommandState),
+		activeCommands: make(map[dimse.MessageID]*serviceCommandState),
 		callbacks:      make(map[int]serviceCallback),
+		lastMessageID:  123,
 	}
 }

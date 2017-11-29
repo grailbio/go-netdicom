@@ -10,7 +10,6 @@ package dimse
 import (
 	"encoding/binary"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
@@ -23,9 +22,9 @@ import (
 type Message interface {
 	fmt.Stringer // Print human-readable description for debugging.
 	Encode(*dicomio.Encoder)
-	GetMessageID() uint16 // Extract the message ID field.
-	CommandField() int    // Return the command field value of this message.
-	HasData() bool        // Do we expact data P_DATA_TF packets after the command packets?
+	GetMessageID() MessageID // Extract the message ID field.
+	CommandField() int       // Return the command field value of this message.
+	HasData() bool           // Do we expact data P_DATA_TF packets after the command packets?
 }
 
 // Status represents a result of a DIMSE call.  P3.7 C defines list of status
@@ -307,11 +306,4 @@ func (a *CommandAssembler) AddDataPDU(pdu *pdu.PDataTf) (byte, Message, []byte, 
 	// TODO(saito) Verify that there's no unread items after the last command&data.
 }
 
-// Generate a new message ID that's unique within the "su".
-var nextMessageID int32 = 123
-
-// NewMessageID allocates a yet-unused message ID.
-func NewMessageID() uint16 {
-	id := atomic.AddInt32(&nextMessageID, 1)
-	return uint16(id % 0x10000)
-}
+type MessageID = uint16
