@@ -24,11 +24,13 @@ type CMoveResult struct {
 
 func handleCStore(
 	cb CStoreCallback,
+	connState ConnectionState,
 	c *dimse.CStoreRq, data []byte,
 	cs *serviceCommandState) {
 	status := dimse.Status{Status: dimse.StatusUnrecognizedOperation}
 	if cb != nil {
 		status = cb(
+			connState,
 			cs.context.transferSyntaxUID,
 			c.AffectedSOPClassUID,
 			c.AffectedSOPInstanceUID,
@@ -46,6 +48,7 @@ func handleCStore(
 
 func handleCFind(
 	params ServiceProviderParams,
+	connState ConnectionState,
 	c *dimse.CFindRq, data []byte,
 	cs *serviceCommandState) {
 	if params.CFind == nil {
@@ -72,7 +75,7 @@ func handleCFind(
 	status := dimse.Status{Status: dimse.StatusSuccess}
 	responseCh := make(chan CFindResult, 128)
 	go func() {
-		params.CFind(cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
+		params.CFind(connState, cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
 	}()
 	for resp := range responseCh {
 		if resp.Err != nil {
@@ -111,6 +114,7 @@ func handleCFind(
 
 func handleCMove(
 	params ServiceProviderParams,
+	connState ConnectionState,
 	c *dimse.CMoveRq, data []byte,
 	cs *serviceCommandState) {
 	sendError := func(err error) {
@@ -143,7 +147,7 @@ func handleCMove(
 	vlog.VI(1).Infof("C-MOVE-RQ payload: %s", elementsString(elems))
 	responseCh := make(chan CMoveResult, 128)
 	go func() {
-		params.CMove(cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
+		params.CMove(connState, cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
 	}()
 	// responseCh :=
 	status := dimse.Status{Status: dimse.StatusSuccess}
@@ -188,6 +192,7 @@ func handleCMove(
 
 func handleCGet(
 	params ServiceProviderParams,
+	connState ConnectionState,
 	c *dimse.CGetRq, data []byte, cs *serviceCommandState) {
 	sendError := func(err error) {
 		cs.sendMessage(&dimse.CGetRsp{
@@ -214,7 +219,7 @@ func handleCGet(
 	vlog.VI(1).Infof("C-GET-RQ payload: %s", elementsString(elems))
 	responseCh := make(chan CMoveResult, 128)
 	go func() {
-		params.CGet(cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
+		params.CGet(connState, cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
 	}()
 	status := dimse.Status{Status: dimse.StatusSuccess}
 	var numSuccesses, numFailures uint16
@@ -267,11 +272,12 @@ func handleCGet(
 
 func handleCEcho(
 	params ServiceProviderParams,
+	connState ConnectionState,
 	c *dimse.CEchoRq, data []byte,
 	cs *serviceCommandState) {
 	status := dimse.Status{Status: dimse.StatusUnrecognizedOperation}
 	if params.CEcho != nil {
-		status = params.CEcho()
+		status = params.CEcho(connState)
 	}
 	vlog.Infof("Received E-ECHO: context: %+v, status: %+v", cs.context, status)
 	resp := &dimse.CEchoRsp{
@@ -337,6 +343,7 @@ const DefaultMaxPDUSize = 4 << 20
 // header, followed by data. It should return either dimse.Success0 on success,
 // or one of CStoreStatus* error codes on errors.
 type CStoreCallback func(
+	conn ConnectionState,
 	transferSyntaxUID string,
 	sopClassUID string,
 	sopInstanceUID string,
@@ -354,6 +361,7 @@ type CStoreCallback func(
 // dataset.  The callback must close the channel after it produces all the
 // responses.
 type CFindCallback func(
+	conn ConnectionState,
 	transferSyntaxUID string,
 	sopClassUID string,
 	filters []*dicom.Element,
@@ -368,14 +376,22 @@ type CFindCallback func(
 // block. The callback must close the channel after it produces all the
 // datasets.
 type CMoveCallback func(
+	conn ConnectionState,
 	transferSyntaxUID string,
 	sopClassUID string,
 	filters []*dicom.Element,
 	ch chan CMoveResult)
 
+// ConnectionState informs session state to callbacks.
+type ConnectionState struct {
+	// TLS connection state. It is nonempty only when the connection is set up
+	// over TLS.
+	TLS tls.ConnectionState
+}
+
 // CEchoCallback implements C-ECHO callback. It typically just returns
 // dimse.Success.
-type CEchoCallback func() dimse.Status
+type CEchoCallback func(conn ConnectionState) dimse.Status
 
 // ServiceProvider encapsulates the state for DICOM server (provider).
 type ServiceProvider struct {
@@ -456,6 +472,14 @@ func NewServiceProvider(params ServiceProviderParams, port string) (*ServiceProv
 	return sp, nil
 }
 
+func getConnState(conn net.Conn) (cs ConnectionState) {
+	tlsConn, ok := conn.(*tls.Conn)
+	if ok {
+		cs.TLS = tlsConn.ConnectionState()
+	}
+	return
+}
+
 // RunProviderForConn starts threads for running a DICOM server on "conn". This
 // function returns immediately; "conn" will be cleaned up in the background.
 func RunProviderForConn(conn net.Conn, params ServiceProviderParams) {
@@ -463,23 +487,23 @@ func RunProviderForConn(conn net.Conn, params ServiceProviderParams) {
 	disp := newServiceDispatcher()
 	disp.registerCallback(dimse.CommandFieldCStoreRq,
 		func(msg dimse.Message, data []byte, cs *serviceCommandState) {
-			handleCStore(params.CStore, msg.(*dimse.CStoreRq), data, cs)
+			handleCStore(params.CStore, getConnState(conn), msg.(*dimse.CStoreRq), data, cs)
 		})
 	disp.registerCallback(dimse.CommandFieldCFindRq,
 		func(msg dimse.Message, data []byte, cs *serviceCommandState) {
-			handleCFind(params, msg.(*dimse.CFindRq), data, cs)
+			handleCFind(params, getConnState(conn), msg.(*dimse.CFindRq), data, cs)
 		})
 	disp.registerCallback(dimse.CommandFieldCMoveRq,
 		func(msg dimse.Message, data []byte, cs *serviceCommandState) {
-			handleCMove(params, msg.(*dimse.CMoveRq), data, cs)
+			handleCMove(params, getConnState(conn), msg.(*dimse.CMoveRq), data, cs)
 		})
 	disp.registerCallback(dimse.CommandFieldCGetRq,
 		func(msg dimse.Message, data []byte, cs *serviceCommandState) {
-			handleCGet(params, msg.(*dimse.CGetRq), data, cs)
+			handleCGet(params, getConnState(conn), msg.(*dimse.CGetRq), data, cs)
 		})
 	disp.registerCallback(dimse.CommandFieldCEchoRq,
 		func(msg dimse.Message, data []byte, cs *serviceCommandState) {
-			handleCEcho(params, msg.(*dimse.CEchoRq), data, cs)
+			handleCEcho(params, getConnState(conn), msg.(*dimse.CEchoRq), data, cs)
 		})
 	go runStateMachineForServiceProvider(conn, upcallCh, disp.downcallCh)
 	for event := range upcallCh {

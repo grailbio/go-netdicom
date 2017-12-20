@@ -20,7 +20,9 @@ func startServer(faults netdicom.FaultInjector) net.Listener {
 	go func() {
 		// TODO(saito) test w/ small PDU.
 		params := netdicom.ServiceProviderParams{
-			CStore: func(transferSyntaxUID string,
+			CStore: func(
+				connState netdicom.ConnectionState,
+				transferSyntaxUID string,
 				sopClassUID string,
 				sopInstanceUID string,
 				data []byte) dimse.Status {

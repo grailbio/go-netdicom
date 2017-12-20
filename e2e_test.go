@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -19,7 +20,6 @@ import (
 	"github.com/grailbio/go-netdicom/sopclass"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os/exec"
 	"v.io/x/lib/vlog"
 )
 
@@ -47,12 +47,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func onCEchoRequest() dimse.Status {
+func onCEchoRequest(connState ConnectionState) dimse.Status {
 	nEchoRequests++
 	return dimse.Success
 }
 
 func onCStoreRequest(
+	connState ConnectionState,
 	transferSyntaxUID string,
 	sopClassUID string,
 	sopInstanceUID string,
@@ -75,6 +76,7 @@ func onCStoreRequest(
 }
 
 func onCFindRequest(
+	connState ConnectionState,
 	transferSyntaxUID string,
 	sopClassUID string,
 	filters []*dicom.Element,
@@ -109,6 +111,7 @@ func onCFindRequest(
 }
 
 func onCGetRequest(
+	connState ConnectionState,
 	transferSyntaxUID string,
 	sopClassUID string,
 	filters []*dicom.Element,

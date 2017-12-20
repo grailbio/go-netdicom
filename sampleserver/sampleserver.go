@@ -339,20 +339,23 @@ func main() {
 	params := netdicom.ServiceProviderParams{
 		AETitle:   *aeFlag,
 		RemoteAEs: remoteAEs,
-		CEcho: func() dimse.Status {
+		CEcho: func(connState netdicom.ConnectionState) dimse.Status {
 			vlog.Info("Received C-ECHO")
 			return dimse.Success
 		},
-		CFind: func(transferSyntaxUID string, sopClassUID string, filter []*dicom.Element, ch chan netdicom.CFindResult) {
+		CFind: func(connState netdicom.ConnectionState, transferSyntaxUID string, sopClassUID string,
+			filter []*dicom.Element, ch chan netdicom.CFindResult) {
 			ss.onCFind(transferSyntaxUID, sopClassUID, filter, ch)
 		},
-		CMove: func(transferSyntaxUID string, sopClassUID string, filter []*dicom.Element, ch chan netdicom.CMoveResult) {
+		CMove: func(connState netdicom.ConnectionState, transferSyntaxUID string, sopClassUID string,
+			filter []*dicom.Element, ch chan netdicom.CMoveResult) {
 			ss.onCMoveOrCGet(transferSyntaxUID, sopClassUID, filter, ch)
 		},
-		CGet: func(transferSyntaxUID string, sopClassUID string, filter []*dicom.Element, ch chan netdicom.CMoveResult) {
+		CGet: func(connState netdicom.ConnectionState, transferSyntaxUID string, sopClassUID string,
+			filter []*dicom.Element, ch chan netdicom.CMoveResult) {
 			ss.onCMoveOrCGet(transferSyntaxUID, sopClassUID, filter, ch)
 		},
-		CStore: func(transferSyntaxUID string,
+		CStore: func(connState netdicom.ConnectionState, transferSyntaxUID string,
 			sopClassUID string,
 			sopInstanceUID string,
 			data []byte) dimse.Status {
