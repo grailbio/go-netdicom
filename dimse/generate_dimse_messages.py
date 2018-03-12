@@ -103,8 +103,9 @@ def generate_go_definition(m: Message, out: IO[str]):
     print('}', file=out)
 
     print('', file=out)
-    print(f'func (v* {m.name}) Encode(e *dicomio.Encoder) {{', file=out)
-    print(f'	encodeField(e, dicomtag.CommandField, uint16({m.command_field}))', file=out)
+    print(f'func (v *{m.name}) Encode(e *dicomio.Encoder) {{', file=out)
+    print('    elems := []*dicom.Element{}', file=out)
+    print(f'	elems = append(elems, newElement(dicomtag.CommandField, uint16({m.command_field})))', file=out)
     for f in m.fields:
         if not f.required:
             if f.type == 'string':
@@ -112,29 +113,28 @@ def generate_go_definition(m: Message, out: IO[str]):
             else:
                 zero = '0'
             print(f'	if v.{f.name} != {zero} {{', file=out)
-            print(f'		encodeField(e, dicomtag.{f.name}, v.{f.name})', file=out)
+            print(f'		elems = append(elems, newElement(dicomtag.{f.name}, v.{f.name}))', file=out)
             print(f'	}}', file=out)
         elif f.type == 'Status':
-            print(f'	encodeStatus(e, v.{f.name})', file=out)
+            print(f'	elems = append(elems, newStatusElements(v.{f.name})...)', file=out)
         else:
-            print(f'	encodeField(e, dicomtag.{f.name}, v.{f.name})', file=out)
-    print('	for _, elem := range v.Extra {', file=out)
-    print('		dicom.WriteElement(e, elem)', file=out)
-    print('	}', file=out)
+            print(f'	elems = append(elems, newElement(dicomtag.{f.name}, v.{f.name}))', file=out)
+    print('	elems = append(elems, v.Extra...)', file=out)
+    print('	encodeElements(e, elems)', file=out)
     print('}', file=out)
 
     print('', file=out)
-    print(f'func (v* {m.name}) HasData() bool {{', file=out)
+    print(f'func (v *{m.name}) HasData() bool {{', file=out)
     print(f'	return v.CommandDataSetType != CommandDataSetTypeNull', file=out)
     print('}', file=out)
 
     print('', file=out)
-    print(f'func (v* {m.name}) CommandField() int {{', file=out)
+    print(f'func (v *{m.name}) CommandField() int {{', file=out)
     print(f'	return {m.command_field}', file=out)
     print('}', file=out)
 
     print('', file=out)
-    print(f'func (v* {m.name}) GetMessageID() MessageID {{', file=out)
+    print(f'func (v *{m.name}) GetMessageID() MessageID {{', file=out)
     if m.type == Type.REQUEST:
         print(f'	return v.MessageID', file=out)
     else:
@@ -142,7 +142,15 @@ def generate_go_definition(m: Message, out: IO[str]):
     print('}', file=out)
 
     print('', file=out)
-    print(f'func (v* {m.name}) String() string {{', file=out)
+    print(f'func (v *{m.name}) GetStatus() *Status {{', file=out)
+    if m.type == Type.REQUEST:
+        print(f'	return nil', file=out)
+    else:
+        print(f'	return &v.Status', file=out)
+    print('}', file=out)
+
+    print('', file=out)
+    print(f'func (v *{m.name}) String() string {{', file=out)
     i = 0
     fmt = f'{m.name}{{'
     args = ''

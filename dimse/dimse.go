@@ -10,6 +10,7 @@ package dimse
 import (
 	"encoding/binary"
 	"fmt"
+	"sort"
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
@@ -22,9 +23,15 @@ import (
 type Message interface {
 	fmt.Stringer // Print human-readable description for debugging.
 	Encode(*dicomio.Encoder)
-	GetMessageID() MessageID // Extract the message ID field.
-	CommandField() int       // Return the command field value of this message.
-	HasData() bool           // Do we expact data P_DATA_TF packets after the command packets?
+	// GetMessageID extracts the message ID field.
+	GetMessageID() MessageID
+	// CommandField returns the command field value of this message.
+	CommandField() int
+	// GetStatus returns the the response status value. It is nil for request message
+	// types, and non-nil for response message types.
+	GetStatus() *Status
+	// HasData is true if we expect P_DATA_TF packets after the command packets.
+	HasData() bool
 }
 
 // Status represents a result of a DIMSE call.  P3.7 C defines list of status
@@ -128,15 +135,34 @@ func (d *messageDecoder) getUInt16(tag dicomtag.Tag, optional isOptionalElement)
 	return v
 }
 
-// Encode a DIMSE field with the given tag, given value "v"
-func encodeField(e *dicomio.Encoder, tag dicomtag.Tag, v interface{}) {
-	elem := dicom.Element{
+// Encode the given elements. The elements are sorted in ascending tag order.
+func encodeElements(e *dicomio.Encoder, elems []*dicom.Element) {
+	sort.Slice(elems, func(i, j int) bool {
+		return elems[i].Tag.Compare(elems[j].Tag) < 0
+	})
+	for _, elem := range elems {
+		dicom.WriteElement(e, elem)
+	}
+}
+
+// Create a list of elements that represent the dimse status. The list contains
+// multiple elements for non-ok status.
+func newStatusElements(s Status) []*dicom.Element {
+	elems := []*dicom.Element{newElement(dicomtag.Status, uint16(s.Status))}
+	if s.ErrorComment != "" {
+		elems = append(elems, newElement(dicomtag.ErrorComment, s.ErrorComment))
+	}
+	return elems
+}
+
+// Create a new element. The value type must match the tag's.
+func newElement(tag dicomtag.Tag, v interface{}) *dicom.Element {
+	return &dicom.Element{
 		Tag:             tag,
 		VR:              "", // autodetect
 		UndefinedLength: false,
 		Value:           []interface{}{v},
 	}
-	dicom.WriteElement(e, &elem)
 }
 
 // CommandDataSetTypeNull indicates that the DIMSE message has no data payload,
@@ -183,13 +209,6 @@ const (
 	StatusAttributeValueOutOfRange StatusCode = 0x0116
 	StatusAttributeListError       StatusCode = 0x0107
 )
-
-func encodeStatus(e *dicomio.Encoder, s Status) {
-	encodeField(e, dicomtag.Status, uint16(s.Status))
-	if s.ErrorComment != "" {
-		encodeField(e, dicomtag.ErrorComment, s.ErrorComment)
-	}
-}
 
 // ReadMessage constructs a typed dimse.Message object, given a set of
 // dicom.Elements,
@@ -240,7 +259,7 @@ func EncodeMessage(e *dicomio.Encoder, v Message) {
 	bytes := subEncoder.Bytes()
 	e.PushTransferSyntax(binary.LittleEndian, dicomio.ImplicitVR)
 	defer e.PopTransferSyntax()
-	encodeField(e, dicomtag.CommandGroupLength, uint32(len(bytes)))
+	dicom.WriteElement(e, newElement(dicomtag.CommandGroupLength, uint32(len(bytes))))
 	e.WriteBytes(bytes)
 }
 

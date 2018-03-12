@@ -42,7 +42,11 @@ type serviceCommandState struct {
 
 // Send a command+data combo to the remote peer. data may be nil.
 func (cs *serviceCommandState) sendMessage(cmd dimse.Message, data []byte) {
-	vlog.VI(1).Infof("Sending DIMSE message: %v %v", cmd, cs.disp)
+	if s := cmd.GetStatus(); s != nil && s.Status != dimse.StatusSuccess && s.Status != dimse.StatusPending {
+		vlog.Infof("Sending DIMSE error: %v %v", cmd, cs.disp)
+	} else {
+		vlog.VI(1).Infof("Sending DIMSE message: %v %v", cmd, cs.disp)
+	}
 	payload := &stateEventDIMSEPayload{
 		abstractSyntaxName: cs.context.abstractSyntaxUID,
 		command:            cmd,

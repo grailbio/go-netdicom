@@ -509,8 +509,8 @@ func RunProviderForConn(conn net.Conn, params ServiceProviderParams) {
 	for event := range upcallCh {
 		disp.handleEvent(event)
 	}
+	vlog.Infof("Finished connection %p (remote: %+v)", conn, conn.RemoteAddr())
 	disp.close()
-	vlog.VI(2).Info("Finished provider")
 }
 
 // Run listens to incoming connections, accepts them, and runs the DICOM
@@ -522,6 +522,7 @@ func (sp *ServiceProvider) Run() {
 			vlog.Errorf("Accept error: %v", err)
 			continue
 		}
+		vlog.Infof("Accepted connection %p (remote: %+v)", conn, conn.RemoteAddr())
 		go func() { RunProviderForConn(conn, sp.params) }()
 	}
 }

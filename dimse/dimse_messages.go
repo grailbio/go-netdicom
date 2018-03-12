@@ -22,21 +22,21 @@ type CStoreRq struct {
 }
 
 func (v *CStoreRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(1))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageID, v.MessageID)
-	encodeField(e, dicomtag.Priority, v.Priority)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	encodeField(e, dicomtag.AffectedSOPInstanceUID, v.AffectedSOPInstanceUID)
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(1)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageID, v.MessageID))
+	elems = append(elems, newElement(dicomtag.Priority, v.Priority))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, newElement(dicomtag.AffectedSOPInstanceUID, v.AffectedSOPInstanceUID))
 	if v.MoveOriginatorApplicationEntityTitle != "" {
-		encodeField(e, dicomtag.MoveOriginatorApplicationEntityTitle, v.MoveOriginatorApplicationEntityTitle)
+		elems = append(elems, newElement(dicomtag.MoveOriginatorApplicationEntityTitle, v.MoveOriginatorApplicationEntityTitle))
 	}
 	if v.MoveOriginatorMessageID != 0 {
-		encodeField(e, dicomtag.MoveOriginatorMessageID, v.MoveOriginatorMessageID)
+		elems = append(elems, newElement(dicomtag.MoveOriginatorMessageID, v.MoveOriginatorMessageID))
 	}
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CStoreRq) HasData() bool {
@@ -49,6 +49,10 @@ func (v *CStoreRq) CommandField() int {
 
 func (v *CStoreRq) GetMessageID() MessageID {
 	return v.MessageID
+}
+
+func (v *CStoreRq) GetStatus() *Status {
+	return nil
 }
 
 func (v *CStoreRq) String() string {
@@ -78,15 +82,15 @@ type CStoreRsp struct {
 }
 
 func (v *CStoreRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(32769))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	encodeField(e, dicomtag.AffectedSOPInstanceUID, v.AffectedSOPInstanceUID)
-	encodeStatus(e, v.Status)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(32769)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, newElement(dicomtag.AffectedSOPInstanceUID, v.AffectedSOPInstanceUID))
+	elems = append(elems, newStatusElements(v.Status)...)
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CStoreRsp) HasData() bool {
@@ -99,6 +103,10 @@ func (v *CStoreRsp) CommandField() int {
 
 func (v *CStoreRsp) GetMessageID() MessageID {
 	return v.MessageIDBeingRespondedTo
+}
+
+func (v *CStoreRsp) GetStatus() *Status {
+	return &v.Status
 }
 
 func (v *CStoreRsp) String() string {
@@ -125,14 +133,14 @@ type CFindRq struct {
 }
 
 func (v *CFindRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(32))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageID, v.MessageID)
-	encodeField(e, dicomtag.Priority, v.Priority)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(32)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageID, v.MessageID))
+	elems = append(elems, newElement(dicomtag.Priority, v.Priority))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CFindRq) HasData() bool {
@@ -145,6 +153,10 @@ func (v *CFindRq) CommandField() int {
 
 func (v *CFindRq) GetMessageID() MessageID {
 	return v.MessageID
+}
+
+func (v *CFindRq) GetStatus() *Status {
+	return nil
 }
 
 func (v *CFindRq) String() string {
@@ -170,14 +182,14 @@ type CFindRsp struct {
 }
 
 func (v *CFindRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(32800))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	encodeStatus(e, v.Status)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(32800)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, newStatusElements(v.Status)...)
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CFindRsp) HasData() bool {
@@ -190,6 +202,10 @@ func (v *CFindRsp) CommandField() int {
 
 func (v *CFindRsp) GetMessageID() MessageID {
 	return v.MessageIDBeingRespondedTo
+}
+
+func (v *CFindRsp) GetStatus() *Status {
+	return &v.Status
 }
 
 func (v *CFindRsp) String() string {
@@ -215,14 +231,14 @@ type CGetRq struct {
 }
 
 func (v *CGetRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(16))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageID, v.MessageID)
-	encodeField(e, dicomtag.Priority, v.Priority)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(16)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageID, v.MessageID))
+	elems = append(elems, newElement(dicomtag.Priority, v.Priority))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CGetRq) HasData() bool {
@@ -235,6 +251,10 @@ func (v *CGetRq) CommandField() int {
 
 func (v *CGetRq) GetMessageID() MessageID {
 	return v.MessageID
+}
+
+func (v *CGetRq) GetStatus() *Status {
+	return nil
 }
 
 func (v *CGetRq) String() string {
@@ -264,26 +284,26 @@ type CGetRsp struct {
 }
 
 func (v *CGetRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(32784))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(32784)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
 	if v.NumberOfRemainingSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations))
 	}
 	if v.NumberOfCompletedSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations))
 	}
 	if v.NumberOfFailedSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfFailedSuboperations, v.NumberOfFailedSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfFailedSuboperations, v.NumberOfFailedSuboperations))
 	}
 	if v.NumberOfWarningSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfWarningSuboperations, v.NumberOfWarningSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfWarningSuboperations, v.NumberOfWarningSuboperations))
 	}
-	encodeStatus(e, v.Status)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems = append(elems, newStatusElements(v.Status)...)
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CGetRsp) HasData() bool {
@@ -296,6 +316,10 @@ func (v *CGetRsp) CommandField() int {
 
 func (v *CGetRsp) GetMessageID() MessageID {
 	return v.MessageIDBeingRespondedTo
+}
+
+func (v *CGetRsp) GetStatus() *Status {
+	return &v.Status
 }
 
 func (v *CGetRsp) String() string {
@@ -326,15 +350,15 @@ type CMoveRq struct {
 }
 
 func (v *CMoveRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(33))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageID, v.MessageID)
-	encodeField(e, dicomtag.Priority, v.Priority)
-	encodeField(e, dicomtag.MoveDestination, v.MoveDestination)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(33)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageID, v.MessageID))
+	elems = append(elems, newElement(dicomtag.Priority, v.Priority))
+	elems = append(elems, newElement(dicomtag.MoveDestination, v.MoveDestination))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CMoveRq) HasData() bool {
@@ -347,6 +371,10 @@ func (v *CMoveRq) CommandField() int {
 
 func (v *CMoveRq) GetMessageID() MessageID {
 	return v.MessageID
+}
+
+func (v *CMoveRq) GetStatus() *Status {
+	return nil
 }
 
 func (v *CMoveRq) String() string {
@@ -377,26 +405,26 @@ type CMoveRsp struct {
 }
 
 func (v *CMoveRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(32801))
-	encodeField(e, dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID)
-	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(32801)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
+	elems = append(elems, newElement(dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
 	if v.NumberOfRemainingSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfRemainingSuboperations, v.NumberOfRemainingSuboperations))
 	}
 	if v.NumberOfCompletedSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfCompletedSuboperations, v.NumberOfCompletedSuboperations))
 	}
 	if v.NumberOfFailedSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfFailedSuboperations, v.NumberOfFailedSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfFailedSuboperations, v.NumberOfFailedSuboperations))
 	}
 	if v.NumberOfWarningSuboperations != 0 {
-		encodeField(e, dicomtag.NumberOfWarningSuboperations, v.NumberOfWarningSuboperations)
+		elems = append(elems, newElement(dicomtag.NumberOfWarningSuboperations, v.NumberOfWarningSuboperations))
 	}
-	encodeStatus(e, v.Status)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems = append(elems, newStatusElements(v.Status)...)
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CMoveRsp) HasData() bool {
@@ -409,6 +437,10 @@ func (v *CMoveRsp) CommandField() int {
 
 func (v *CMoveRsp) GetMessageID() MessageID {
 	return v.MessageIDBeingRespondedTo
+}
+
+func (v *CMoveRsp) GetStatus() *Status {
+	return &v.Status
 }
 
 func (v *CMoveRsp) String() string {
@@ -436,12 +468,12 @@ type CEchoRq struct {
 }
 
 func (v *CEchoRq) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(48))
-	encodeField(e, dicomtag.MessageID, v.MessageID)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(48)))
+	elems = append(elems, newElement(dicomtag.MessageID, v.MessageID))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CEchoRq) HasData() bool {
@@ -454,6 +486,10 @@ func (v *CEchoRq) CommandField() int {
 
 func (v *CEchoRq) GetMessageID() MessageID {
 	return v.MessageID
+}
+
+func (v *CEchoRq) GetStatus() *Status {
+	return nil
 }
 
 func (v *CEchoRq) String() string {
@@ -476,13 +512,13 @@ type CEchoRsp struct {
 }
 
 func (v *CEchoRsp) Encode(e *dicomio.Encoder) {
-	encodeField(e, dicomtag.CommandField, uint16(32816))
-	encodeField(e, dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo)
-	encodeField(e, dicomtag.CommandDataSetType, v.CommandDataSetType)
-	encodeStatus(e, v.Status)
-	for _, elem := range v.Extra {
-		dicom.WriteElement(e, elem)
-	}
+	elems := []*dicom.Element{}
+	elems = append(elems, newElement(dicomtag.CommandField, uint16(32816)))
+	elems = append(elems, newElement(dicomtag.MessageIDBeingRespondedTo, v.MessageIDBeingRespondedTo))
+	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
+	elems = append(elems, newStatusElements(v.Status)...)
+	elems = append(elems, v.Extra...)
+	encodeElements(e, elems)
 }
 
 func (v *CEchoRsp) HasData() bool {
@@ -495,6 +531,10 @@ func (v *CEchoRsp) CommandField() int {
 
 func (v *CEchoRsp) GetMessageID() MessageID {
 	return v.MessageIDBeingRespondedTo
+}
+
+func (v *CEchoRsp) GetStatus() *Status {
+	return &v.Status
 }
 
 func (v *CEchoRsp) String() string {
