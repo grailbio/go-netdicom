@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,11 +22,11 @@ import (
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom"
 	"github.com/grailbio/go-netdicom/dimse"
-	"v.io/x/lib/vlog"
 )
 
 var (
@@ -76,7 +77,7 @@ func (ss *server) onCStore(
 		}
 		out, err = os.Create(path)
 		if err != nil {
-			vlog.Errorf("%s: create: %v", path, err)
+			log.Printf("%s: create: %v", path, err)
 			return dimse.Status{Status: dimse.StatusNotAuthorized, ErrorComment: err.Error()}
 		}
 	}
@@ -94,20 +95,20 @@ func (ss *server) onCStore(
 		})
 	e.WriteBytes(data)
 	if err := e.Error(); err != nil {
-		vlog.Errorf("%s: write: %v", path, err)
+		log.Printf("%s: write: %v", path, err)
 		return dimse.Status{Status: dimse.StatusNotAuthorized, ErrorComment: err.Error()}
 	}
 	err = out.Close()
 	out = nil
 	if err != nil {
-		vlog.Errorf("%s: close %s", path, err)
+		log.Printf("%s: close %s", path, err)
 		return dimse.Status{Status: dimse.StatusNotAuthorized, ErrorComment: err.Error()}
 	}
-	vlog.Infof("C-STORE: Created %v", path)
+	log.Printf("C-STORE: Created %v", path)
 	// Register the new file in ss.datasets.
 	ds, err := dicom.ReadDataSetFromFile(path, dicom.ReadOptions{DropPixelData: true})
 	if err != nil {
-		vlog.Errorf("%s: failed to parse dicom file: %v", path, err)
+		log.Printf("%s: failed to parse dicom file: %v", path, err)
 	} else {
 		ss.datasets[path] = ds
 	}
@@ -136,7 +137,9 @@ func (ss *server) findMatchingFiles(filters []*dicom.Element) ([]filterMatch, er
 				return matches, err
 			}
 			if !ok {
-				vlog.VI(2).Infof("DS: %s: filter %v missed", path, filter)
+				if dicomlog.Level >= 2 {
+					log.Printf("DS: %s: filter %v missed", path, filter)
+				}
 				allMatched = false
 				break
 			}
@@ -145,7 +148,7 @@ func (ss *server) findMatchingFiles(filters []*dicom.Element) ([]filterMatch, er
 			} else {
 				elem, err := dicom.NewElement(filter.Tag)
 				if err != nil {
-					vlog.Error(err)
+					log.Println(err)
 					return matches, err
 				}
 				match.elems = append(match.elems, elem)
@@ -167,19 +170,21 @@ func (ss *server) onCFind(
 	filters []*dicom.Element,
 	ch chan netdicom.CFindResult) {
 	for _, filter := range filters {
-		vlog.Infof("CFind: filter %v", filter)
+		log.Printf("CFind: filter %v", filter)
 	}
-	vlog.Infof("CFind: transfersyntax: %v, classuid: %v",
+	log.Printf("CFind: transfersyntax: %v, classuid: %v",
 		dicomuid.UIDString(transferSyntaxUID),
 		dicomuid.UIDString(sopClassUID))
 	// Match the filter against every file. This is just for demonstration
 	matches, err := ss.findMatchingFiles(filters)
-	vlog.Infof("C-FIND: found %d matches, err %v", len(matches), err)
+	log.Printf("C-FIND: found %d matches, err %v", len(matches), err)
 	if err != nil {
 		ch <- netdicom.CFindResult{Err: err}
 	} else {
 		for _, match := range matches {
-			vlog.VI(1).Infof("C-FIND resp %s: %v", match.path, match.elems)
+			if dicomlog.Level >= 1 {
+				log.Printf("C-FIND resp %s: %v", match.path, match.elems)
+			}
 			ch <- netdicom.CFindResult{Elements: match.elems}
 		}
 	}
@@ -191,20 +196,22 @@ func (ss *server) onCMoveOrCGet(
 	sopClassUID string,
 	filters []*dicom.Element,
 	ch chan netdicom.CMoveResult) {
-	vlog.Infof("C-MOVE: transfersyntax: %v, classuid: %v",
+	log.Printf("C-MOVE: transfersyntax: %v, classuid: %v",
 		dicomuid.UIDString(transferSyntaxUID),
 		dicomuid.UIDString(sopClassUID))
 	for _, filter := range filters {
-		vlog.Infof("C-MOVE: filter %v", filter)
+		log.Printf("C-MOVE: filter %v", filter)
 	}
 
 	matches, err := ss.findMatchingFiles(filters)
-	vlog.Infof("C-MOVE: found %d matches, err %v", len(matches), err)
+	log.Printf("C-MOVE: found %d matches, err %v", len(matches), err)
 	if err != nil {
 		ch <- netdicom.CMoveResult{Err: err}
 	} else {
 		for i, match := range matches {
-			vlog.VI(1).Infof("C-MOVE resp %d %s: %v", i, match.path, match.elems)
+			if dicomlog.Level >= 1 {
+				log.Printf("C-MOVE resp %d %s: %v", i, match.path, match.elems)
+			}
 			// Read the file; the one in ss.datasets lack the PixelData.
 			ds, err := dicom.ReadDataSetFromFile(match.path, dicom.ReadOptions{})
 			resp := netdicom.CMoveResult{
@@ -232,15 +239,15 @@ func listDicomFiles(dir string) (map[string]*dicom.DataSet, error) {
 		}
 		ds, err := dicom.ReadDataSetFromFile(path, dicom.ReadOptions{DropPixelData: true})
 		if err != nil {
-			vlog.Errorf("%s: failed to parse dicom file: %v", path, err)
+			log.Printf("%s: failed to parse dicom file: %v", path, err)
 			return
 		}
-		vlog.Infof("%s: read dicom file", path)
+		log.Printf("%s: read dicom file", path)
 		datasets[path] = ds
 	}
 	walkCallback := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			vlog.Errorf("%v: skip file: %v", path, err)
+			log.Printf("%v: skip file: %v", path, err)
 			return nil
 		}
 		if (info.Mode() & os.ModeDir) != 0 {
@@ -250,7 +257,7 @@ func listDicomFiles(dir string) (map[string]*dicom.DataSet, error) {
 			}
 			subpaths, err := filepath.Glob(path + "/*")
 			if err != nil {
-				vlog.Errorf("%v: glob: %v", path, err)
+				log.Printf("%v: glob: %v", path, err)
 				return nil
 			}
 			for _, subpath := range subpaths {
@@ -282,7 +289,9 @@ func parseRemoteAEFlag(flag string) (map[string]string, error) {
 		if m == nil {
 			return aeMap, fmt.Errorf("Failed to parse AE spec '%v'", str)
 		}
-		vlog.VI(1).Infof("Remote AE '%v' -> '%v'", m[1], m[2])
+		if dicomlog.Level >= 1 {
+			log.Printf("Remote AE '%v' -> '%v'", m[1], m[2])
+		}
 		aeMap[m[1]] = m[2]
 	}
 	return aeMap, nil
@@ -297,30 +306,29 @@ func canonicalizeHostPort(addr string) string {
 
 func main() {
 	flag.Parse()
-	vlog.ConfigureLibraryLoggerFromFlags()
 	port := canonicalizeHostPort(*portFlag)
 	if *outputFlag == "" {
 		*outputFlag = filepath.Join(*dirFlag, "incoming")
 	}
 	remoteAEs, err := parseRemoteAEFlag(*remoteAEFlag)
 	if err != nil {
-		vlog.Fatalf("Failed to parse -remote-ae flag: %v", err)
+		log.Panicf("Failed to parse -remote-ae flag: %v", err)
 	}
 	datasets, err := listDicomFiles(*dirFlag)
 	if err != nil {
-		vlog.Fatalf("Failed to list DICOM files in %s: %v", *dirFlag, err)
+		log.Panicf("Failed to list DICOM files in %s: %v", *dirFlag, err)
 	}
 	ss := server{
 		mu:       &sync.Mutex{},
 		datasets: datasets,
 	}
-	vlog.Infof("Listening on %s", port)
+	log.Printf("Listening on %s", port)
 
 	var tlsConfig *tls.Config
 	if *tlsKeyFlag != "" {
 		cert, err := tls.LoadX509KeyPair(*tlsCertFlag, *tlsKeyFlag)
 		if err != nil {
-			vlog.Fatal(err)
+			log.Panic(err)
 		}
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{cert},
@@ -328,7 +336,7 @@ func main() {
 		if *tlsCAFlag != "" {
 			ca, err := ioutil.ReadFile(*tlsCAFlag)
 			if err != nil {
-				vlog.Fatal(err)
+				log.Panic(err)
 			}
 			tlsConfig.RootCAs = x509.NewCertPool()
 			tlsConfig.RootCAs.AppendCertsFromPEM(ca)
@@ -340,7 +348,7 @@ func main() {
 		AETitle:   *aeFlag,
 		RemoteAEs: remoteAEs,
 		CEcho: func(connState netdicom.ConnectionState) dimse.Status {
-			vlog.Info("Received C-ECHO")
+			log.Printf("Received C-ECHO")
 			return dimse.Success
 		},
 		CFind: func(connState netdicom.ConnectionState, transferSyntaxUID string, sopClassUID string,

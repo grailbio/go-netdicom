@@ -15,9 +15,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/grailbio/go-dicom/dicomio"
-	"v.io/x/lib/vlog"
 )
 
 // PDU is the interface for DUL messages like A-ASSOCIATE-AC, P-DATA-TF.
@@ -382,7 +382,7 @@ func decodePresentationContextItem(d *dicomio.Decoder, itemType byte, length uin
 func (v *PresentationContextItem) Write(e *dicomio.Encoder) {
 	if v.Type != ItemTypePresentationContextRequest &&
 		v.Type != ItemTypePresentationContextResponse {
-		vlog.Fatal(*v)
+		panic(*v)
 	}
 
 	itemEncoder := dicomio.NewBytesEncoder(binary.BigEndian, dicomio.UnknownVR)
@@ -471,7 +471,7 @@ func EncodePDU(pdu PDU) ([]byte, error) {
 	case *AAbort:
 		pduType = TypeAAbort
 	default:
-		vlog.Fatalf("Unknown PDU %v", pdu)
+		log.Panicf("Unknown PDU %v", pdu)
 	}
 	e := dicomio.NewBytesEncoder(binary.BigEndian, dicomio.UnknownVR)
 	pdu.WritePayload(e)
@@ -621,7 +621,7 @@ func decodeAAssociate(d *dicomio.Decoder, pduType Type) *AAssociate {
 
 func (pdu *AAssociate) WritePayload(e *dicomio.Encoder) {
 	if pdu.Type == 0 || pdu.CalledAETitle == "" || pdu.CallingAETitle == "" {
-		vlog.Fatal(*pdu)
+		panic(*pdu)
 	}
 	e.WriteUInt16(pdu.ProtocolVersion)
 	e.WriteZeros(2) // Reserved

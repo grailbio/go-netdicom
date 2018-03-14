@@ -3,13 +3,13 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-netdicom"
 	"github.com/grailbio/go-netdicom/dimse"
 	"github.com/grailbio/go-netdicom/sopclass"
-	"v.io/x/lib/vlog"
 )
 
 var (
@@ -29,9 +29,9 @@ func newServiceUser(sopClasses []string) *netdicom.ServiceUser {
 		CallingAETitle: *aeTitleFlag,
 		SOPClasses:     sopClasses})
 	if err != nil {
-		vlog.Fatal(err)
+		log.Panic(err)
 	}
-	vlog.Infof("Connecting to %s", *serverFlag)
+	log.Printf("Connecting to %s", *serverFlag)
 	su.Connect(*serverFlag)
 	return su
 }
@@ -41,13 +41,13 @@ func cStore(inPath string) {
 	defer su.Release()
 	dataset, err := dicom.ReadDataSetFromFile(inPath, dicom.ReadOptions{})
 	if err != nil {
-		vlog.Fatalf("%s: %v", inPath, err)
+		log.Panicf("%s: %v", inPath, err)
 	}
 	err = su.CStore(dataset)
 	if err != nil {
-		vlog.Fatalf("%s: cstore failed: %v", inPath, err)
+		log.Panicf("%s: cstore failed: %v", inPath, err)
 	}
-	vlog.Infof("C-STORE finished successfully")
+	log.Printf("C-STORE finished successfully")
 }
 
 func generateCFindElements() (netdicom.QRLevel, []*dicom.Element) {
@@ -85,12 +85,12 @@ func cGet() {
 	n := 0
 	err := su.CGet(qrLevel, args,
 		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
-			vlog.Infof("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",
+			log.Printf("%d: C-GET data; transfersyntax=%v, sopclass=%v, sopinstance=%v data %dB",
 				n, transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
 			n++
 			return dimse.Success
 		})
-	vlog.Infof("C-GET finished: %v", err)
+	log.Printf("C-GET finished: %v", err)
 }
 
 func cFind() {
@@ -99,20 +99,18 @@ func cFind() {
 	qrLevel, args := generateCFindElements()
 	for result := range su.CFind(qrLevel, args) {
 		if result.Err != nil {
-			vlog.Errorf("C-FIND error: %v", result.Err)
+			log.Printf("C-FIND error: %v", result.Err)
 			continue
 		}
-		vlog.Errorf("Got response with %d elems", len(result.Elements))
+		log.Printf("Got response with %d elems", len(result.Elements))
 		for _, elem := range result.Elements {
-			vlog.Errorf("Got elem: %v", elem.String())
+			log.Printf("Got elem: %v", elem.String())
 		}
 	}
 }
 
 func main() {
 	flag.Parse()
-	vlog.ConfigureLibraryLoggerFromFlags()
-
 	if *storeFlag != "" {
 		cStore(*storeFlag)
 	} else if *findFlag {
@@ -120,6 +118,6 @@ func main() {
 	} else if *getFlag {
 		cGet()
 	} else {
-		vlog.Fatal("Either -store, -get, or -find must be set")
+		log.Panic("Either -store, -get, or -find must be set")
 	}
 }

@@ -10,13 +10,14 @@ package dimse
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
 	"sort"
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-netdicom/pdu"
-	"v.io/x/lib/vlog"
 )
 
 // Message defines the common interface for all DIMSE message types.
@@ -69,13 +70,15 @@ func (d *messageDecoder) setError(err error) {
 func (d *messageDecoder) findElement(tag dicomtag.Tag, optional isOptionalElement) *dicom.Element {
 	for i, elem := range d.elems {
 		if elem.Tag == tag {
-			vlog.VI(3).Infof("Return %v for %s", elem, tag.String())
+			if dicomlog.Level >= 3 {
+				log.Printf("dimse.findElement: Return %v for %s", elem, tag.String())
+			}
 			d.parsed[i] = true
 			return elem
 		}
 	}
 	if optional == requiredElement {
-		d.setError(fmt.Errorf("Element %s not found during DIMSE decoding", dicomtag.DebugString(tag)))
+		d.setError(fmt.Errorf("dimse.findElement: Element %s not found during DIMSE decoding", dicomtag.DebugString(tag)))
 	}
 	return nil
 }

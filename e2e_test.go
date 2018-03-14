@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +21,6 @@ import (
 	"github.com/grailbio/go-netdicom/sopclass"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"v.io/x/lib/vlog"
 )
 
 var provider *ServiceProvider
@@ -32,7 +32,6 @@ var once sync.Once
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	vlog.ConfigureLibraryLoggerFromFlags()
 	var err error
 	provider, err = NewServiceProvider(ServiceProviderParams{
 		CEcho:  onCEchoRequest,
@@ -41,7 +40,7 @@ func TestMain(m *testing.M) {
 		CGet:   onCGetRequest,
 	}, ":0")
 	if err != nil {
-		vlog.Fatal(err)
+		panic(err)
 	}
 	go provider.Run()
 	os.Exit(m.Run())
@@ -58,7 +57,7 @@ func onCStoreRequest(
 	sopClassUID string,
 	sopInstanceUID string,
 	data []byte) dimse.Status {
-	vlog.Infof("Start C-STORE handler, transfersyntax=%s, sopclass=%s, sopinstance=%s",
+	log.Printf("Start C-STORE handler, transfersyntax=%s, sopclass=%s, sopinstance=%s",
 		dicomuid.UIDString(transferSyntaxUID),
 		dicomuid.UIDString(sopClassUID),
 		dicomuid.UIDString(sopInstanceUID))
@@ -71,7 +70,7 @@ func onCStoreRequest(
 		})
 	e.WriteBytes(data)
 	cstoreData = e.Bytes()
-	vlog.Infof("Received C-STORE request, %d bytes", len(cstoreData))
+	log.Printf("Received C-STORE request, %d bytes", len(cstoreData))
 	return cstoreStatus
 }
 
@@ -81,25 +80,25 @@ func onCFindRequest(
 	sopClassUID string,
 	filters []*dicom.Element,
 	ch chan CFindResult) {
-	vlog.Infof("Received cfind request")
+	log.Printf("Received cfind request")
 	found := 0
 	for _, elem := range filters {
-		vlog.Infof("Filter %v", elem)
+		log.Printf("Filter %v", elem)
 		if elem.Tag == dicomtag.QueryRetrieveLevel {
 			if elem.MustGetString() != "PATIENT" {
-				vlog.Fatalf("Wrong QR level: %v", elem)
+				log.Panicf("Wrong QR level: %v", elem)
 			}
 			found++
 		}
 		if elem.Tag == dicomtag.PatientName {
 			if elem.MustGetString() != "foohah" {
-				vlog.Fatalf("Wrong patient name: %v", elem)
+				log.Panicf("Wrong patient name: %v", elem)
 			}
 			found++
 		}
 	}
 	if found != 2 {
-		vlog.Fatalf("Didn't find expected filters: %v", filters)
+		log.Panicf("Didn't find expected filters: %v", filters)
 	}
 	ch <- CFindResult{
 		Elements: []*dicom.Element{dicom.MustNewElement(dicomtag.PatientName, "johndoe")},
@@ -116,7 +115,7 @@ func onCGetRequest(
 	sopClassUID string,
 	filters []*dicom.Element,
 	ch chan CMoveResult) {
-	vlog.Infof("Received cget request")
+	log.Printf("Received cget request")
 	path := "testdata/reportsi.dcm"
 	dataset := mustReadDICOMFile(path)
 	ch <- CMoveResult{
@@ -174,7 +173,7 @@ func getCStoreData() (*dicom.DataSet, error) {
 func mustReadDICOMFile(path string) *dicom.DataSet {
 	dataset, err := dicom.ReadDataSetFromFile(path, dicom.ReadOptions{})
 	if err != nil {
-		vlog.Fatal(err)
+		log.Panic(err)
 	}
 	return dataset
 }
@@ -182,7 +181,7 @@ func mustReadDICOMFile(path string) *dicom.DataSet {
 func mustNewServiceUser(t *testing.T, sopClasses []string) *ServiceUser {
 	su, err := NewServiceUser(ServiceUserParams{SOPClasses: sopClasses})
 	require.NoError(t, err)
-	vlog.Infof("Connecting to %v", provider.ListenAddr().String())
+	log.Printf("Connecting to %v", provider.ListenAddr().String())
 	su.Connect(provider.ListenAddr().String())
 	return su
 }
@@ -193,13 +192,13 @@ func TestStore(t *testing.T) {
 	defer su.Release()
 	err := su.CStore(dataset)
 	if err != nil {
-		vlog.Fatal(err)
+		log.Panic(err)
 	}
-	vlog.Infof("Store done!!")
+	log.Printf("Store done!!")
 
 	out, err := getCStoreData()
 	if err != nil {
-		vlog.Fatal(err)
+		log.Panic(err)
 	}
 	checkFileBodiesEqual(t, dataset, out)
 }
@@ -214,7 +213,7 @@ func TestStoreFailure0(t *testing.T) {
 	defer su.Release()
 	err := su.CStore(dataset)
 	if err == nil || strings.Index(err.Error(), "Foohah") < 0 {
-		vlog.Fatal(err)
+		log.Panic(err)
 	}
 }
 
@@ -251,7 +250,7 @@ func TestDCMTKCGet(t *testing.T) {
 		t.Skip("getscu not found.")
 		return
 	}
-	vlog.Errorf("PORT is %v %v", getProviderPort(), tempDir)
+	log.Printf("PORT is %v %v", getProviderPort(), tempDir)
 	cmd := exec.Command(getscuPath, "localhost", getProviderPort(), "-od", tempDir, "-k", "0010,0020=foo" /*not used*/)
 	require.NoError(t, cmd.Run())
 	require.NoError(t, err)
@@ -279,7 +278,7 @@ func (fi *testFaultInjector) onStateTransition(oldState stateType, event *stateE
 
 func (fi *testFaultInjector) onSend(data []byte) faultInjectorAction {
 	if fi.connected {
-		vlog.Errorf("Disconnecting!")
+		log.Printf("Disconnecting!")
 		return faultInjectorDisconnect
 	}
 	return faultInjectorContinue
@@ -299,7 +298,7 @@ func TestStoreFailure1(t *testing.T) {
 	defer su.Release()
 	err := su.CStore(dataset)
 	if err == nil || strings.Index(err.Error(), "Connection closed") < 0 {
-		vlog.Fatal(err)
+		log.Panic(err)
 	}
 }
 
@@ -308,10 +307,10 @@ func TestEcho(t *testing.T) {
 	defer su.Release()
 	oldCount := nEchoRequests
 	if err := su.CEcho(); err != nil {
-		vlog.Fatal(err)
+		log.Panic(err)
 	}
 	if nEchoRequests != oldCount+1 {
-		vlog.Fatal("C-ECHO handler did not run")
+		log.Panic("C-ECHO handler did not run")
 	}
 }
 
@@ -324,7 +323,7 @@ func TestFind(t *testing.T) {
 	var namesFound []string
 
 	for result := range su.CFind(QRLevelPatient, filter) {
-		vlog.Errorf("Got result: %v", result)
+		log.Printf("Got result: %v", result)
 		if result.Err != nil {
 			t.Error(result.Err)
 			continue
@@ -352,7 +351,7 @@ func TestCGet(t *testing.T) {
 
 	err := su.CGet(QRLevelPatient, filter,
 		func(transferSyntaxUID, sopClassUID, sopInstanceUID string, data []byte) dimse.Status {
-			vlog.Infof("Got data: %v %v %v %d bytes", transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
+			log.Printf("Got data: %v %v %v %d bytes", transferSyntaxUID, sopClassUID, sopInstanceUID, len(data))
 			require.True(t, len(cgetData) == 0, "Received multiple C-GET responses")
 			e := dicomio.NewBytesEncoder(nil, dicomio.UnknownVR)
 			dicom.WriteFileHeader(e,
@@ -388,7 +387,7 @@ func TestNonexistentServer(t *testing.T) {
 	su.Connect(":99999")
 	err = su.CStore(mustReadDICOMFile("testdata/IM-0001-0003.dcm"))
 	if err == nil || err.Error() != "Connection failed" {
-		vlog.Fatalf("Expect C-STORE to fail: %v", err)
+		log.Panicf("Expect C-STORE to fail: %v", err)
 	}
 }
 

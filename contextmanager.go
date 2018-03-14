@@ -2,11 +2,12 @@ package netdicom
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/grailbio/go-dicom"
+	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom/pdu"
-	"v.io/x/lib/vlog"
 )
 
 type contextManagerEntry struct {
@@ -109,7 +110,7 @@ func (m *contextManager) onAssociateRequest(requestItems []pdu.SubItem) ([]pdu.S
 		switch ri := requestItem.(type) {
 		case *pdu.ApplicationContextItem:
 			if ri.Name != pdu.DICOMApplicationContextItemName {
-				vlog.Errorf("Found illegal applicationcontextname. Expect %v, found %v",
+				log.Printf("dicom.onAssociateRequest: Found illegal applicationcontextname. Expect %v, found %v",
 					ri.Name, pdu.DICOMApplicationContextItemName)
 			}
 		case *pdu.PresentationContextItem:
@@ -119,7 +120,7 @@ func (m *contextManager) onAssociateRequest(requestItems []pdu.SubItem) ([]pdu.S
 				switch c := subItem.(type) {
 				case *pdu.AbstractSyntaxSubItem:
 					if sopUID != "" {
-						return nil, fmt.Errorf("Multiple AbstractSyntaxSubItem found in %v",
+						return nil, fmt.Errorf("dicom.onAssociateRequest: Multiple AbstractSyntaxSubItem found in %v",
 							ri.String())
 					}
 					sopUID = c.Name
@@ -129,12 +130,12 @@ func (m *contextManager) onAssociateRequest(requestItems []pdu.SubItem) ([]pdu.S
 						pickedTransferSyntaxUID = c.Name
 					}
 				default:
-					return nil, fmt.Errorf("Unknown subitem in PresentationContext: %s",
+					return nil, fmt.Errorf("dicom.onAssociateRequest: Unknown subitem in PresentationContext: %s",
 						subItem.String())
 				}
 			}
 			if sopUID == "" || pickedTransferSyntaxUID == "" {
-				return nil, fmt.Errorf("SOP or transfersyntax not found in PresentationContext: %v",
+				return nil, fmt.Errorf("dicom.onAssociateRequest: SOP or transfersyntax not found in PresentationContext: %v",
 					ri.String())
 			}
 			responses = append(responses, &pdu.PresentationContextItem{
@@ -142,8 +143,10 @@ func (m *contextManager) onAssociateRequest(requestItems []pdu.SubItem) ([]pdu.S
 				ContextID: ri.ContextID,
 				Result:    0, // accepted
 				Items:     []pdu.SubItem{&pdu.TransferSyntaxSubItem{Name: pickedTransferSyntaxUID}}})
-			vlog.VI(2).Infof("Provider(%p): addmapping %v %v %v",
-				m, sopUID, pickedTransferSyntaxUID, ri.ContextID)
+			if dicomlog.Level >= 2 {
+				log.Printf("dicom.onAssociateRequest: Provider(%p): addmapping %v %v %v",
+					m, sopUID, pickedTransferSyntaxUID, ri.ContextID)
+			}
 			// TODO(saito) Callback the service provider instead of accepting the sopclass blindly.
 			addContextMapping(m, sopUID, pickedTransferSyntaxUID, ri.ContextID, pdu.PresentationContextAccepted)
 		case *pdu.UserInformationItem:
@@ -163,9 +166,11 @@ func (m *contextManager) onAssociateRequest(requestItems []pdu.SubItem) ([]pdu.S
 	responses = append(responses,
 		&pdu.UserInformationItem{
 			Items: []pdu.SubItem{&pdu.UserInformationMaximumLengthItem{MaximumLengthReceived: uint32(DefaultMaxPDUSize)}}})
-	vlog.VI(1).Infof("Received associate request, #contexts:%v, maxPDU:%v, implclass:%v, version:%v",
-		len(m.contextIDToAbstractSyntaxNameMap),
-		m.peerMaxPDUSize, m.peerImplementationClassUID, m.peerImplementationVersionName)
+	if dicomlog.Level >= 1 {
+		log.Printf("dicom.onAssociateRequest: Received associate request, #contexts:%v, maxPDU:%v, implclass:%v, version:%v",
+			len(m.contextIDToAbstractSyntaxNameMap),
+			m.peerMaxPDUSize, m.peerImplementationClassUID, m.peerImplementationVersionName)
+	}
 	return responses, nil
 }
 
@@ -208,10 +213,10 @@ func (m *contextManager) onAssociateResponse(responses []pdu.SubItem) error {
 				}
 			}
 			if sopUID == "" {
-				return fmt.Errorf("The A-ASSOCIATE request lacks the abstract syntax item for tag %v (this shouldn't happen)", ri.ContextID)
+				return fmt.Errorf("dicom.onAssociateResponse: The A-ASSOCIATE request lacks the abstract syntax item for tag %v (this shouldn't happen)", ri.ContextID)
 			}
 			if ri.Result != pdu.PresentationContextAccepted {
-				vlog.Errorf("Abstract syntax %v, transfer syntax %v was rejected by the server: %s",
+				log.Printf("dicom.onAssociateResponse: Abstract syntax %v, transfer syntax %v was rejected by the server: %s",
 					dicomuid.UIDString(sopUID), dicomuid.UIDString(pickedTransferSyntaxUID), ri.Result.String())
 			}
 			if !found {
@@ -222,7 +227,7 @@ func (m *contextManager) onAssociateResponse(responses []pdu.SubItem) error {
 				// the point of reporting the list in
 				// A-ASSOCIATE-RQ, but that's only one of
 				// DICOM's pointless complexities.
-				vlog.Errorf("The server picked TransferSyntaxUID '%s' for %s, which is not in the list proposed, %v",
+				log.Printf("dicom.onAssociateResponse: The server picked TransferSyntaxUID '%s' for %s, which is not in the list proposed, %v",
 					dicomuid.UIDString(pickedTransferSyntaxUID),
 					dicomuid.UIDString(sopUID),
 					request.Items)
@@ -242,9 +247,12 @@ func (m *contextManager) onAssociateResponse(responses []pdu.SubItem) error {
 			}
 		}
 	}
-	vlog.VI(1).Infof("Received associate response, #contexts:%v, maxPDU:%v, implclass:%v, version:%v",
-		len(m.contextIDToAbstractSyntaxNameMap),
-		m.peerMaxPDUSize, m.peerImplementationClassUID, m.peerImplementationVersionName)
+	if dicomlog.Level >= 1 {
+		log.Printf("dicom.onAssociateResponse %v: Received associate response, #contexts:%v, maxPDU:%v, implclass:%v, version:%v",
+			m.label,
+			len(m.contextIDToAbstractSyntaxNameMap),
+			m.peerMaxPDUSize, m.peerImplementationClassUID, m.peerImplementationVersionName)
+	}
 	return nil
 }
 
@@ -255,9 +263,11 @@ func addContextMapping(
 	transferSyntaxUID string,
 	contextID byte,
 	result pdu.PresentationContextResult) {
-	vlog.VI(2).Infof("Map context %d -> %s, %s",
-		contextID, dicomuid.UIDString(abstractSyntaxUID),
-		dicomuid.UIDString(transferSyntaxUID))
+	if dicomlog.Level >= 2 {
+		log.Printf("dicom.addContextMapping %v: Map context %d -> %s, %s",
+			m.label, contextID, dicomuid.UIDString(abstractSyntaxUID),
+			dicomuid.UIDString(transferSyntaxUID))
+	}
 	doassert(result >= 0 && result <= 4, result)
 	doassert(contextID%2 == 1, contextID)
 	if result == 0 {
@@ -276,7 +286,7 @@ func addContextMapping(
 
 func (m *contextManager) checkContextRejection(e *contextManagerEntry) error {
 	if e.result != pdu.PresentationContextAccepted {
-		return fmt.Errorf("contextmanager(%v): Trying to use rejected context <%v, %v>: %s",
+		return fmt.Errorf("dicom.checkContextRejection %v: Trying to use rejected context <%v, %v>: %s",
 			m.label,
 			dicomuid.UIDString(e.abstractSyntaxUID),
 			dicomuid.UIDString(e.transferSyntaxUID),
@@ -289,7 +299,7 @@ func (m *contextManager) checkContextRejection(e *contextManagerEntry) error {
 func (m *contextManager) lookupByAbstractSyntaxUID(name string) (contextManagerEntry, error) {
 	e, ok := m.abstractSyntaxNameToContextIDMap[name]
 	if !ok {
-		return contextManagerEntry{}, fmt.Errorf("contextmanager(%v): Unknown syntax %s", m.label, dicomuid.UIDString(name))
+		return contextManagerEntry{}, fmt.Errorf("dicom.checkContextRejection %v: Unknown syntax %s", m.label, dicomuid.UIDString(name))
 	}
 	err := m.checkContextRejection(e)
 	if err != nil {
@@ -302,7 +312,7 @@ func (m *contextManager) lookupByAbstractSyntaxUID(name string) (contextManagerE
 func (m *contextManager) lookupByContextID(contextID byte) (contextManagerEntry, error) {
 	e, ok := m.contextIDToAbstractSyntaxNameMap[contextID]
 	if !ok {
-		return contextManagerEntry{}, fmt.Errorf("contextmanager(%v): Unknown context ID %d", m.label, contextID)
+		return contextManagerEntry{}, fmt.Errorf("dicom.lookupByContextID %v: Unknown context ID %d", m.label, contextID)
 	}
 	err := m.checkContextRejection(e)
 	if err != nil {
