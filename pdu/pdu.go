@@ -15,7 +15,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/grailbio/go-dicom/dicomio"
 )
@@ -471,7 +470,7 @@ func EncodePDU(pdu PDU) ([]byte, error) {
 	case *AAbort:
 		pduType = TypeAAbort
 	default:
-		log.Panicf("Unknown PDU %v", pdu)
+		panic(fmt.Sprintf("Unknown PDU %v", pdu))
 	}
 	e := dicomio.NewBytesEncoder(binary.BigEndian, dicomio.UnknownVR)
 	pdu.WritePayload(e)

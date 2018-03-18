@@ -6,7 +6,6 @@ package netdicom
 import (
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -138,7 +137,7 @@ func (e *eventType) String() string {
 	case evt19:
 		description = "Unrecognized or invalid PDU received"
 	default:
-		log.Panicf("dicom.stateMachine: Unknown event type %v", int(*e))
+		panic(fmt.Sprintf("dicom.stateMachine: Unknown event type %v", int(*e)))
 	}
 	return fmt.Sprintf("evt%02d(%s)", *e, description)
 }
@@ -194,7 +193,7 @@ var actionAe3 = &stateAction{"AE-3", "Issue A-ASSOCIATE confirmation (accept) pr
 			}
 			return sta06
 		}
-		log.Printf("dicom.stateMachine: AE-3: %v", err)
+		dicomlog.Vprintf(0, "dicom.stateMachine: AE-3: %v", err)
 		return actionAa8.Callback(sm, event)
 	}}
 
@@ -231,7 +230,7 @@ otherwise issue A-ASSOCIATE-RJ-PDU and start ARTIM timer`,
 		stopTimer(sm)
 		v := event.pdu.(*pdu.AAssociate)
 		if v.ProtocolVersion != 0x0001 {
-			log.Printf("dicom.stateMachine %s: Wrong remote protocol version 0x%x", sm.label, v.ProtocolVersion)
+			dicomlog.Vprintf(0, "dicom.stateMachine %s: Wrong remote protocol version 0x%x", sm.label, v.ProtocolVersion)
 			rj := pdu.AAssociateRj{Result: 1, Source: 2, Reason: 2}
 			sendPDU(sm, &rj)
 			startTimer(sm)
@@ -288,7 +287,7 @@ func splitDataIntoPDUs(sm *stateMachine, abstractSyntaxName string, command bool
 	context, err := sm.contextManager.lookupByAbstractSyntaxUID(abstractSyntaxName)
 	if err != nil {
 		// TODO(saito) Don't crash here.
-		log.Panicf("dicom.stateMachine %s: Illegal syntax name %s: %s", sm.label, dicomuid.UIDString(abstractSyntaxName), err)
+		panic(fmt.Sprintf("dicom.stateMachine %s: Illegal syntax name %s: %s", sm.label, dicomuid.UIDString(abstractSyntaxName), err))
 	}
 	var pdus []pdu.PDataTf
 	// two byte header overhead.
@@ -325,25 +324,21 @@ var actionDt1 = &stateAction{"DT-1", "Send P-DATA-TF PDU",
 		e := dicomio.NewBytesEncoder(nil, dicomio.UnknownVR)
 		dimse.EncodeMessage(e, command)
 		if e.Error() != nil {
-			log.Panicf("Failed to encode DIMSE cmd %v: %v", command, e.Error())
+			panic(fmt.Sprintf("Failed to encode DIMSE cmd %v: %v", command, e.Error()))
 		}
-		if dicomlog.Level >= 1 {
-			log.Printf("dicom.stateMachine %s: Send DIMSE msg: %v", sm.label, command)
-		}
+		dicomlog.Vprintf(1, "dicom.stateMachine %s: Send DIMSE msg: %v", sm.label, command)
 		pdus := splitDataIntoPDUs(sm, event.dimsePayload.abstractSyntaxName, true /*command*/, e.Bytes())
 		for _, pdu := range pdus {
 			sendPDU(sm, &pdu)
 		}
 		if command.HasData() {
-			if dicomlog.Level >= 1 {
-				log.Printf("dicom.stateMachine %s: Send DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command)
-			}
+			dicomlog.Vprintf(1, "dicom.stateMachine %s: Send DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command)
 			pdus := splitDataIntoPDUs(sm, event.dimsePayload.abstractSyntaxName, false /*data*/, event.dimsePayload.data)
 			for _, pdu := range pdus {
 				sendPDU(sm, &pdu)
 			}
 		} else if len(event.dimsePayload.data) > 0 {
-			log.Panicf("dicom.stateMachine %s: Found DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command)
+			panic(fmt.Sprintf("dicom.stateMachine %s: Found DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command))
 		}
 		return sta06
 	}}
@@ -353,9 +348,7 @@ var actionDt2 = &stateAction{"DT-2", "Send P-DATA indication primitive",
 		contextID, command, data, err := sm.commandAssembler.AddDataPDU(event.pdu.(*pdu.PDataTf))
 		if err == nil {
 			if command != nil { // All fragments received
-				if dicomlog.Level >= 1 {
-					log.Printf("dicom.stateMachine %s: DIMSE request: %v", sm.label, command)
-				}
+				dicomlog.Vprintf(1, "dicom.stateMachine %s: DIMSE request: %v", sm.label, command)
 				sm.upcallCh <- upcallEvent{
 					eventType: upcallEventData,
 					cm:        sm.contextManager,
@@ -365,7 +358,7 @@ var actionDt2 = &stateAction{"DT-2", "Send P-DATA indication primitive",
 			}
 			return sta06
 		}
-		log.Printf("dicom.stateMachine %s: Failed to assemble data: %v", sm.label, err) // TODO(saito)
+		dicomlog.Vprintf(0, "dicom.stateMachine %s: Failed to assemble data: %v", sm.label, err) // TODO(saito)
 		return actionAa8.Callback(sm, event)
 	}}
 
@@ -414,7 +407,7 @@ var actionAr7 = &stateAction{"AR-7", "Issue P-DATA-TF PDU",
 		e := dicomio.NewBytesEncoder(nil, dicomio.UnknownVR)
 		dimse.EncodeMessage(e, command)
 		if e.Error() != nil {
-			log.Panicf("dicom.StateMachine %s: Failed to encode DIMSE cmd %v: %v", sm.label, command, e.Error())
+			panic(fmt.Sprintf("dicom.StateMachine %s: Failed to encode DIMSE cmd %v: %v", sm.label, command, e.Error()))
 		}
 		pdus := splitDataIntoPDUs(sm, event.dimsePayload.abstractSyntaxName, true /*command*/, e.Bytes())
 		for _, pdu := range pdus {
@@ -522,7 +515,7 @@ func (e *upcallEventType) String() string {
 	case upcallEventData:
 		description = "P_DATA_TF PDU received"
 	default:
-		log.Panicf("dicom.StateMachine: Unknown event type %v", int(*e))
+		panic(fmt.Sprintf("dicom.StateMachine: Unknown event type %v", int(*e)))
 	}
 	return fmt.Sprintf("upcall%02d(%s)", *e, description)
 }
@@ -770,9 +763,7 @@ type stateMachine struct {
 
 func closeConnection(sm *stateMachine) {
 	close(sm.upcallCh)
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.StateMachine %s: Closing connection %v", sm.label, sm.conn)
-	}
+	dicomlog.Vprintf(1, "dicom.StateMachine %s: Closing connection %v", sm.label, sm.conn)
 	if sm.conn != nil {
 		sm.conn.Close()
 	}
@@ -782,7 +773,7 @@ func sendPDU(sm *stateMachine, v pdu.PDU) {
 	doassert(sm.conn != nil)
 	data, err := pdu.EncodePDU(v)
 	if err != nil {
-		log.Printf("dicom.StateMachine %s: Failed to encode: %v; closing connection %v", sm.label, err, sm.conn)
+		dicomlog.Vprintf(0, "dicom.StateMachine %s: Failed to encode: %v; closing connection %v", sm.label, err, sm.conn)
 		sm.conn.Close()
 		sm.errorCh <- stateEvent{event: evt17, err: err}
 		return
@@ -790,20 +781,18 @@ func sendPDU(sm *stateMachine, v pdu.PDU) {
 	if sm.faults != nil {
 		action := sm.faults.onSend(data)
 		if action == faultInjectorDisconnect {
-			log.Printf("dicom.StateMachine %s: FAULT: closing connection for test", sm.label)
+			dicomlog.Vprintf(0, "dicom.StateMachine %s: FAULT: closing connection for test", sm.label)
 			sm.conn.Close()
 		}
 	}
 	n, err := sm.conn.Write(data)
 	if n != len(data) || err != nil {
-		log.Printf("dicom.StateMachine %s: Failed to write %d bytes. Actual %d bytes : %v; closing connection %v", sm.label, len(data), n, err, sm.conn)
+		dicomlog.Vprintf(0, "dicom.StateMachine %s: Failed to write %d bytes. Actual %d bytes : %v; closing connection %v", sm.label, len(data), n, err, sm.conn)
 		sm.conn.Close()
 		sm.errorCh <- stateEvent{event: evt17, err: err}
 		return
 	}
-	if dicomlog.Level >= 2 {
-		log.Printf("dicom.StateMachine %s: sendPDU: %v", sm.label, v.String())
-	}
+	dicomlog.Vprintf(2, "dicom.StateMachine %s: sendPDU: %v", sm.label, v.String())
 }
 
 func startTimer(sm *stateMachine) {
@@ -826,14 +815,12 @@ func stopTimer(sm *stateMachine) {
 }
 
 func networkReaderThread(ch chan stateEvent, conn net.Conn, maxPDUSize int, smName string) {
-	if dicomlog.Level >= 2 {
-		log.Printf("dicom.StateMachine %s: Starting network reader, maxPDU %d", smName, maxPDUSize)
-	}
+	dicomlog.Vprintf(2, "dicom.StateMachine %s: Starting network reader, maxPDU %d", smName, maxPDUSize)
 	doassert(maxPDUSize > 16*1024)
 	for {
 		v, err := pdu.ReadPDU(conn, maxPDUSize)
 		if err != nil {
-			log.Printf("dicom.StateMachine %s: Failed to read PDU: %v", smName, err)
+			dicomlog.Vprintf(0, "dicom.StateMachine %s: Failed to read PDU: %v", smName, err)
 			if err == io.EOF {
 				ch <- stateEvent{event: evt17, pdu: nil, err: nil}
 			} else {
@@ -843,9 +830,7 @@ func networkReaderThread(ch chan stateEvent, conn net.Conn, maxPDUSize int, smNa
 			break
 		}
 		doassert(v != nil)
-		if dicomlog.Level >= 2 {
-			log.Printf("dicom.StateMachine %s: read PDU: %v", smName, v.String())
-		}
+		dicomlog.Vprintf(2, "dicom.StateMachine %s: read PDU: %v", smName, v.String())
 		switch n := v.(type) {
 		case *pdu.AAssociate:
 			if n.Type == pdu.TypeAAssociateRq {
@@ -856,7 +841,7 @@ func networkReaderThread(ch chan stateEvent, conn net.Conn, maxPDUSize int, smNa
 			}
 			continue
 		case *pdu.AAssociateRj:
-			log.Printf("dicom.StateMachine %s: Association rejected: %v", smName, v.String())
+			dicomlog.Vprintf(0, "dicom.StateMachine %s: Association rejected: %v", smName, v.String())
 			ch <- stateEvent{event: evt04, pdu: n, err: nil}
 			continue
 		case *pdu.PDataTf:
@@ -869,19 +854,17 @@ func networkReaderThread(ch chan stateEvent, conn net.Conn, maxPDUSize int, smNa
 			ch <- stateEvent{event: evt13, pdu: n, err: nil}
 			continue
 		case *pdu.AAbort:
-			log.Printf("dicom.StateMachine %s: Association aborted: %v", smName, v.String())
+			dicomlog.Vprintf(0, "dicom.StateMachine %s: Association aborted: %v", smName, v.String())
 			ch <- stateEvent{event: evt16, pdu: n, err: nil}
 			continue
 		default:
 			err := fmt.Errorf("dicom.StateMachine %s: Unknown PDU type: %v", v.String(), smName)
 			ch <- stateEvent{event: evt19, pdu: v, err: err}
-			log.Println(err)
+			dicomlog.Vprintf(0, "dicom.StateMachine: %v", err)
 			continue
 		}
 	}
-	if dicomlog.Level >= 2 {
-		log.Printf("dicom.StateMachine %s: Exiting network reader", smName)
-	}
+	dicomlog.Vprintf(2, "dicom.StateMachine %s: Exiting network reader", smName)
 }
 
 func getNextEvent(sm *stateMachine) stateEvent {
@@ -927,34 +910,28 @@ func findAction(currentState stateType, event *stateEvent, smName string) *state
 
 func runOneStep(sm *stateMachine) {
 	event := getNextEvent(sm)
-	if dicomlog.Level >= 2 {
-		log.Printf("dicom.StateMachine %s: Current state: %v, Event %v", sm.label, sm.currentState.String(), event)
-	}
+	dicomlog.Vprintf(2, "dicom.StateMachine %s: Current state: %v, Event %v", sm.label, sm.currentState.String(), event)
 	action := findAction(sm.currentState, &event, sm.label)
 	if action == nil {
 		msg := fmt.Sprintf("dicom.StateMachine %s: No action found for state %v, event %v", sm.label, sm.currentState.String(), event.String())
 		if sm.faults != nil {
 			msg += " FIhistory: " + sm.faults.String()
 		}
-		log.Printf("dicom.StateMachine: Unknown state transition:")
+		dicomlog.Vprintf(0, "dicom.StateMachine: Unknown state transition:")
 		for _, s := range strings.Split(msg, "\n") {
-			log.Printf(s)
+			dicomlog.Vprintf(0, s)
 		}
-		log.Printf(msg)
+		dicomlog.Vprintf(0, msg)
 
 		action = actionAa2 // This will force connection abortion
 	}
-	if dicomlog.Level >= 2 {
-		log.Printf("dicom.StateMachine %s: Running action %v", sm.label, action)
-	}
+	dicomlog.Vprintf(2, "dicom.StateMachine %s: Running action %v", sm.label, action)
 	newState := action.Callback(sm, event)
 	if sm.faults != nil {
 		sm.faults.onStateTransition(sm.currentState, &event, action, newState)
 	}
 	sm.currentState = newState
-	if dicomlog.Level >= 2 {
-		log.Printf("dicom.StateMachine Next state: %v", sm.currentState.String())
-	}
+	dicomlog.Vprintf(2, "dicom.StateMachine Next state: %v", sm.currentState.String())
 }
 
 func runStateMachineForServiceUser(
@@ -982,9 +959,7 @@ func runStateMachineForServiceUser(
 	for sm.currentState != sta01 {
 		runOneStep(sm)
 	}
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.StateMachine %s: statemachine finished", sm.label)
-	}
+	dicomlog.Vprintf(1, "dicom.StateMachine %s: statemachine finished", sm.label)
 }
 
 func runStateMachineForServiceProvider(
@@ -1009,7 +984,5 @@ func runStateMachineForServiceProvider(
 	for sm.currentState != sta01 {
 		runOneStep(sm)
 	}
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.StateMachine %s: statemachine finished", sm.label)
-	}
+	dicomlog.Vprintf(1, "dicom.StateMachine %s: statemachine finished", sm.label)
 }

@@ -386,7 +386,7 @@ func TestNonexistentServer(t *testing.T) {
 	defer su.Release()
 	su.Connect(":99999")
 	err = su.CStore(mustReadDICOMFile("testdata/IM-0001-0003.dcm"))
-	if err == nil || err.Error() != "Connection failed" {
+	if err == nil || !strings.Contains(err.Error(), "Connection failed") {
 		log.Panicf("Expect C-STORE to fail: %v", err)
 	}
 }

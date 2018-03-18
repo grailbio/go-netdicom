@@ -5,7 +5,6 @@ package netdicom
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/grailbio/go-dicom"
@@ -71,9 +70,7 @@ func handleCFind(
 		}, nil)
 		return
 	}
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.serviceProvider: C-FIND-RQ payload: %s", elementsString(elems))
-	}
+	dicomlog.Vprintf(1, "dicom.serviceProvider: C-FIND-RQ payload: %s", elementsString(elems))
 
 	status := dimse.Status{Status: dimse.StatusSuccess}
 	responseCh := make(chan CFindResult, 128)
@@ -88,12 +85,10 @@ func handleCFind(
 			}
 			break
 		}
-		if dicomlog.Level >= 1 {
-			log.Printf("dicom.serviceProvider: C-FIND-RSP: %s", elementsString(resp.Elements))
-		}
+		dicomlog.Vprintf(1, "dicom.serviceProvider: C-FIND-RSP: %s", elementsString(resp.Elements))
 		payload, err := writeElementsToBytes(resp.Elements, cs.context.transferSyntaxUID)
 		if err != nil {
-			log.Printf("dicom.serviceProvider: C-FIND: encode error %v", err)
+			dicomlog.Vprintf(0, "dicom.serviceProvider: C-FIND: encode error %v", err)
 			status = dimse.Status{
 				Status:       dimse.CFindUnableToProcess,
 				ErrorComment: err.Error(),
@@ -149,9 +144,7 @@ func handleCMove(
 		sendError(err)
 		return
 	}
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.serviceProvider: C-MOVE-RQ payload: %s", elementsString(elems))
-	}
+	dicomlog.Vprintf(1, "dicom.serviceProvider: C-MOVE-RQ payload: %s", elementsString(elems))
 	responseCh := make(chan CMoveResult, 128)
 	go func() {
 		params.CMove(connState, cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
@@ -167,10 +160,10 @@ func handleCMove(
 			}
 			break
 		}
-		log.Printf("dicom.serviceProvider: C-MOVE: Sending %v to %v(%s)", resp.Path, c.MoveDestination, remoteHostPort)
+		dicomlog.Vprintf(0, "dicom.serviceProvider: C-MOVE: Sending %v to %v(%s)", resp.Path, c.MoveDestination, remoteHostPort)
 		err := runCStoreOnNewAssociation(params.AETitle, c.MoveDestination, remoteHostPort, resp.DataSet)
 		if err != nil {
-			log.Printf("dicom.serviceProvider: C-MOVE: C-store of %v to %v(%v) failed: %v", resp.Path, c.MoveDestination, remoteHostPort, err)
+			dicomlog.Vprintf(0, "dicom.serviceProvider: C-MOVE: C-store of %v to %v(%v) failed: %v", resp.Path, c.MoveDestination, remoteHostPort, err)
 			numFailures++
 		} else {
 			numSuccesses++
@@ -223,9 +216,7 @@ func handleCGet(
 		sendError(err)
 		return
 	}
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.serviceProvider: C-GET-RQ payload: %s", elementsString(elems))
-	}
+	dicomlog.Vprintf(1, "dicom.serviceProvider: C-GET-RQ payload: %s", elementsString(elems))
 	responseCh := make(chan CMoveResult, 128)
 	go func() {
 		params.CGet(connState, cs.context.transferSyntaxUID, c.AffectedSOPClassUID, elems, responseCh)
@@ -251,10 +242,10 @@ func handleCGet(
 		defer cs.disp.deleteCommand(subCs)
 		err = runCStoreOnAssociation(subCs.upcallCh, subCs.disp.downcallCh, subCs.cm, subCs.messageID, resp.DataSet)
 		if err != nil {
-			log.Printf("dicom.serviceProvider: C-GET: C-store of %v failed: %v", resp.Path, err)
+			dicomlog.Vprintf(0, "dicom.serviceProvider: C-GET: C-store of %v failed: %v", resp.Path, err)
 			numFailures++
 		} else {
-			log.Printf("dicom.serviceProvider: C-GET: Sent %v", resp.Path)
+			dicomlog.Vprintf(0, "dicom.serviceProvider: C-GET: Sent %v", resp.Path)
 			numSuccesses++
 		}
 		cs.sendMessage(&dimse.CGetRsp{
@@ -288,7 +279,7 @@ func handleCEcho(
 	if params.CEcho != nil {
 		status = params.CEcho(connState)
 	}
-	log.Printf("dicom.serviceProvider: Received E-ECHO: context: %+v, status: %+v", cs.context, status)
+	dicomlog.Vprintf(0, "dicom.serviceProvider: Received E-ECHO: context: %+v, status: %+v", cs.context, status)
 	resp := &dimse.CEchoRsp{
 		MessageIDBeingRespondedTo: c.MessageID,
 		CommandDataSetType:        dimse.CommandDataSetTypeNull,
@@ -424,9 +415,7 @@ func readElementsInBytes(data []byte, transferSyntaxUID string) ([]*dicom.Elemen
 	var elems []*dicom.Element
 	for decoder.Len() > 0 {
 		elem := dicom.ReadElement(decoder, dicom.ReadOptions{})
-		if dicomlog.Level >= 1 {
-			log.Printf("dicom.serviceProvider: C-FIND: Read elem: %v, err %v", elem, decoder.Error())
-		}
+		dicomlog.Vprintf(1, "dicom.serviceProvider: C-FIND: Read elem: %v, err %v", elem, decoder.Error())
 		if decoder.Error() != nil {
 			break
 		}
@@ -461,9 +450,7 @@ func runCStoreOnNewAssociation(myAETitle, remoteAETitle, remoteHostPort string, 
 	defer su.Release()
 	su.Connect(remoteHostPort)
 	err = su.CStore(ds)
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.serviceProvider: C-STORE subop done: %v", err)
-	}
+	dicomlog.Vprintf(1, "dicom.serviceProvider: C-STORE subop done: %v", err)
 	return err
 }
 
@@ -522,7 +509,7 @@ func RunProviderForConn(conn net.Conn, params ServiceProviderParams) {
 	for event := range upcallCh {
 		disp.handleEvent(event)
 	}
-	log.Printf("dicom.serviceProvider: Finished connection %p (remote: %+v)", conn, conn.RemoteAddr())
+	dicomlog.Vprintf(0, "dicom.serviceProvider: Finished connection %p (remote: %+v)", conn, conn.RemoteAddr())
 	disp.close()
 }
 
@@ -532,10 +519,10 @@ func (sp *ServiceProvider) Run() {
 	for {
 		conn, err := sp.listener.Accept()
 		if err != nil {
-			log.Printf("dicom.serviceProvider: Accept error: %v", err)
+			dicomlog.Vprintf(0, "dicom.serviceProvider: Accept error: %v", err)
 			continue
 		}
-		log.Printf("dicom.serviceProvider: Accepted connection %p (remote: %+v)", conn, conn.RemoteAddr())
+		dicomlog.Vprintf(0, "dicom.serviceProvider: Accepted connection %p (remote: %+v)", conn, conn.RemoteAddr())
 		go func() { RunProviderForConn(conn, sp.params) }()
 	}
 }

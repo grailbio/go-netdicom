@@ -2,7 +2,6 @@ package netdicom
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
@@ -37,20 +36,16 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 	if err != nil {
 		return fmt.Errorf("dicom.cstore: data lacks MediaStorageSOPClassUID: %v", err)
 	}
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.cstore: DICOM abstractsyntax: %s, sopinstance: %s", dicomuid.UIDString(sopClassUID), sopInstanceUID)
-	}
+	dicomlog.Vprintf(1, "dicom.cstore: DICOM abstractsyntax: %s, sopinstance: %s", dicomuid.UIDString(sopClassUID), sopInstanceUID)
 	context, err := cm.lookupByAbstractSyntaxUID(sopClassUID)
 	if err != nil {
-		log.Printf("dicom.cstore: sop class %v not found in context %v", sopClassUID, err)
+		dicomlog.Vprintf(0, "dicom.cstore: sop class %v not found in context %v", sopClassUID, err)
 		return err
 	}
-	if dicomlog.Level >= 1 {
-		log.Printf("dicom.cstore: using transfersyntax %s to send sop class %s, instance %s",
-			dicomuid.UIDString(context.transferSyntaxUID),
-			dicomuid.UIDString(sopClassUID),
-			sopInstanceUID)
-	}
+	dicomlog.Vprintf(1, "dicom.cstore: using transfersyntax %s to send sop class %s, instance %s",
+		dicomuid.UIDString(context.transferSyntaxUID),
+		dicomuid.UIDString(sopClassUID),
+		sopInstanceUID)
 	bodyEncoder := dicomio.NewBytesEncoderWithTransferSyntax(context.transferSyntaxUID)
 	for _, elem := range ds.Elements {
 		if elem.Tag.Group == dicomtag.MetadataGroup {
@@ -59,7 +54,7 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 		dicom.WriteElement(bodyEncoder, elem)
 	}
 	if err := bodyEncoder.Error(); err != nil {
-		log.Printf("dicom.cstore: body encoder failed: %v", err)
+		dicomlog.Vprintf(0, "dicom.cstore: body encoder failed: %v", err)
 		return err
 	}
 	downcallCh <- stateEvent{
@@ -76,14 +71,12 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 		},
 	}
 	for {
-		log.Printf("dicom.cstore: Start reading resp w/ messageID:%v", messageID)
+		dicomlog.Vprintf(0, "dicom.cstore: Start reading resp w/ messageID:%v", messageID)
 		event, ok := <-upcallCh
 		if !ok {
 			return fmt.Errorf("dicom.cstore: Connection closed while waiting for C-STORE response")
 		}
-		if dicomlog.Level >= 1 {
-			log.Printf("dicom.cstore: resp event: %v", event.command)
-		}
+		dicomlog.Vprintf(1, "dicom.cstore: resp event: %v", event.command)
 		doassert(event.eventType == upcallEventData)
 		doassert(event.command != nil)
 		resp, ok := event.command.(*dimse.CStoreRsp)

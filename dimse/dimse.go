@@ -10,7 +10,6 @@ package dimse
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/grailbio/go-dicom"
@@ -70,9 +69,7 @@ func (d *messageDecoder) setError(err error) {
 func (d *messageDecoder) findElement(tag dicomtag.Tag, optional isOptionalElement) *dicom.Element {
 	for i, elem := range d.elems {
 		if elem.Tag == tag {
-			if dicomlog.Level >= 3 {
-				log.Printf("dimse.findElement: Return %v for %s", elem, tag.String())
-			}
+			dicomlog.Vprintf(3, "dimse.findElement: Return %v for %s", elem, tag.String())
 			d.parsed[i] = true
 			return elem
 		}

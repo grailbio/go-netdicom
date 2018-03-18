@@ -22,7 +22,6 @@ import (
 
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
-	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
 	"github.com/grailbio/go-netdicom"
@@ -137,9 +136,7 @@ func (ss *server) findMatchingFiles(filters []*dicom.Element) ([]filterMatch, er
 				return matches, err
 			}
 			if !ok {
-				if dicomlog.Level >= 2 {
-					log.Printf("DS: %s: filter %v missed", path, filter)
-				}
+				log.Printf("DS: %s: filter %v missed", path, filter)
 				allMatched = false
 				break
 			}
@@ -182,9 +179,7 @@ func (ss *server) onCFind(
 		ch <- netdicom.CFindResult{Err: err}
 	} else {
 		for _, match := range matches {
-			if dicomlog.Level >= 1 {
-				log.Printf("C-FIND resp %s: %v", match.path, match.elems)
-			}
+			log.Printf("C-FIND resp %s: %v", match.path, match.elems)
 			ch <- netdicom.CFindResult{Elements: match.elems}
 		}
 	}
@@ -209,9 +204,7 @@ func (ss *server) onCMoveOrCGet(
 		ch <- netdicom.CMoveResult{Err: err}
 	} else {
 		for i, match := range matches {
-			if dicomlog.Level >= 1 {
-				log.Printf("C-MOVE resp %d %s: %v", i, match.path, match.elems)
-			}
+			log.Printf("C-MOVE resp %d %s: %v", i, match.path, match.elems)
 			// Read the file; the one in ss.datasets lack the PixelData.
 			ds, err := dicom.ReadDataSetFromFile(match.path, dicom.ReadOptions{})
 			resp := netdicom.CMoveResult{
@@ -289,9 +282,7 @@ func parseRemoteAEFlag(flag string) (map[string]string, error) {
 		if m == nil {
 			return aeMap, fmt.Errorf("Failed to parse AE spec '%v'", str)
 		}
-		if dicomlog.Level >= 1 {
-			log.Printf("Remote AE '%v' -> '%v'", m[1], m[2])
-		}
+		log.Printf("Remote AE '%v' -> '%v'", m[1], m[2])
 		aeMap[m[1]] = m[2]
 	}
 	return aeMap, nil
