@@ -40,11 +40,11 @@ const (
 // methods - say CStore and CFind requests - concurrently from two goroutines.
 // You must wait for CStore to finish before issuing CFind.
 type ServiceUser struct {
+	label    string // For  logging
 	upcallCh chan upcallEvent
 
 	mu   *sync.Mutex
 	cond *sync.Cond // Broadcast when status changes.
-
 	disp *serviceDispatcher
 
 	// Following fields are guarded by mu.
@@ -107,14 +107,16 @@ func NewServiceUser(params ServiceUserParams) (*ServiceUser, error) {
 		return nil, err
 	}
 	mu := &sync.Mutex{}
+	label := newUID("user")
 	su := &ServiceUser{
+		label:    label,
 		upcallCh: make(chan upcallEvent, 128),
-		disp:     newServiceDispatcher(),
+		disp:     newServiceDispatcher(label),
 		mu:       mu,
 		cond:     sync.NewCond(mu),
 		status:   serviceUserInitial,
 	}
-	go runStateMachineForServiceUser(params, su.upcallCh, su.disp.downcallCh)
+	go runStateMachineForServiceUser(params, su.upcallCh, su.disp.downcallCh, label)
 	go func() {
 		for event := range su.upcallCh {
 			if event.eventType == upcallEventHandshakeCompleted {

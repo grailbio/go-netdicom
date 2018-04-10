@@ -36,13 +36,14 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 	if err != nil {
 		return fmt.Errorf("dicom.cstore: data lacks MediaStorageSOPClassUID: %v", err)
 	}
-	dicomlog.Vprintf(1, "dicom.cstore: DICOM abstractsyntax: %s, sopinstance: %s", dicomuid.UIDString(sopClassUID), sopInstanceUID)
+	dicomlog.Vprintf(1, "dicom.cstore(%s): DICOM abstractsyntax: %s, sopinstance: %s", cm.label, dicomuid.UIDString(sopClassUID), sopInstanceUID)
 	context, err := cm.lookupByAbstractSyntaxUID(sopClassUID)
 	if err != nil {
-		dicomlog.Vprintf(0, "dicom.cstore: sop class %v not found in context %v", sopClassUID, err)
+		dicomlog.Vprintf(0, "dicom.cstore(%s): sop class %v not found in context %v", cm.label, sopClassUID, err)
 		return err
 	}
-	dicomlog.Vprintf(1, "dicom.cstore: using transfersyntax %s to send sop class %s, instance %s",
+	dicomlog.Vprintf(1, "dicom.cstore(%s): using transfersyntax %s to send sop class %s, instance %s",
+		cm.label,
 		dicomuid.UIDString(context.transferSyntaxUID),
 		dicomuid.UIDString(sopClassUID),
 		sopInstanceUID)
@@ -54,7 +55,7 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 		dicom.WriteElement(bodyEncoder, elem)
 	}
 	if err := bodyEncoder.Error(); err != nil {
-		dicomlog.Vprintf(0, "dicom.cstore: body encoder failed: %v", err)
+		dicomlog.Vprintf(0, "dicom.cstore(%s): body encoder failed: %v", cm.label, err)
 		return err
 	}
 	downcallCh <- stateEvent{
@@ -71,18 +72,18 @@ func runCStoreOnAssociation(upcallCh chan upcallEvent, downcallCh chan stateEven
 		},
 	}
 	for {
-		dicomlog.Vprintf(0, "dicom.cstore: Start reading resp w/ messageID:%v", messageID)
+		dicomlog.Vprintf(0, "dicom.cstore(%s): Start reading resp w/ messageID:%v", cm.label, messageID)
 		event, ok := <-upcallCh
 		if !ok {
-			return fmt.Errorf("dicom.cstore: Connection closed while waiting for C-STORE response")
+			return fmt.Errorf("dicom.cstore(%s): Connection closed while waiting for C-STORE response", cm.label)
 		}
-		dicomlog.Vprintf(1, "dicom.cstore: resp event: %v", event.command)
+		dicomlog.Vprintf(1, "dicom.cstore(%s): resp event: %v", cm.label, event.command)
 		doassert(event.eventType == upcallEventData)
 		doassert(event.command != nil)
 		resp, ok := event.command.(*dimse.CStoreRsp)
 		doassert(ok) // TODO(saito)
 		if resp.Status.Status != 0 {
-			return fmt.Errorf("dicom.cstore: failed: %v", resp.String())
+			return fmt.Errorf("dicom.cstore(%s): failed: %v", cm.label, resp.String())
 		}
 		return nil
 	}

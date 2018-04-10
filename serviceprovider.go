@@ -397,6 +397,8 @@ type CEchoCallback func(conn ConnectionState) dimse.Status
 type ServiceProvider struct {
 	params   ServiceProviderParams
 	listener net.Listener
+	// Label is a unique string used in log messages to identify this provider.
+	label string
 }
 
 func writeElementsToBytes(elems []*dicom.Element, transferSyntaxUID string) ([]byte, error) {
@@ -459,7 +461,10 @@ func runCStoreOnNewAssociation(myAETitle, remoteAETitle, remoteHostPort string, 
 // IP address that this machine can bind to.  Run() will actually start running
 // the service.
 func NewServiceProvider(params ServiceProviderParams, port string) (*ServiceProvider, error) {
-	sp := &ServiceProvider{params: params}
+	sp := &ServiceProvider{
+		params: params,
+		label:  newUID("sp"),
+	}
 	var err error
 	if params.TLSConfig != nil {
 		sp.listener, err = tls.Listen("tcp", port, params.TLSConfig)
@@ -484,7 +489,8 @@ func getConnState(conn net.Conn) (cs ConnectionState) {
 // function returns immediately; "conn" will be cleaned up in the background.
 func RunProviderForConn(conn net.Conn, params ServiceProviderParams) {
 	upcallCh := make(chan upcallEvent, 128)
-	disp := newServiceDispatcher()
+	label := newUID("sc")
+	disp := newServiceDispatcher(label)
 	disp.registerCallback(dimse.CommandFieldCStoreRq,
 		func(msg dimse.Message, data []byte, cs *serviceCommandState) {
 			handleCStore(params.CStore, getConnState(conn), msg.(*dimse.CStoreRq), data, cs)
@@ -505,11 +511,11 @@ func RunProviderForConn(conn net.Conn, params ServiceProviderParams) {
 		func(msg dimse.Message, data []byte, cs *serviceCommandState) {
 			handleCEcho(params, getConnState(conn), msg.(*dimse.CEchoRq), data, cs)
 		})
-	go runStateMachineForServiceProvider(conn, upcallCh, disp.downcallCh)
+	go runStateMachineForServiceProvider(conn, upcallCh, disp.downcallCh, label)
 	for event := range upcallCh {
 		disp.handleEvent(event)
 	}
-	dicomlog.Vprintf(0, "dicom.serviceProvider: Finished connection %p (remote: %+v)", conn, conn.RemoteAddr())
+	dicomlog.Vprintf(0, "dicom.serviceProvider(%s): Finished connection %p (remote: %+v)", label, conn, conn.RemoteAddr())
 	disp.close()
 }
 
@@ -519,10 +525,10 @@ func (sp *ServiceProvider) Run() {
 	for {
 		conn, err := sp.listener.Accept()
 		if err != nil {
-			dicomlog.Vprintf(0, "dicom.serviceProvider: Accept error: %v", err)
+			dicomlog.Vprintf(0, "dicom.serviceProvider(%s): Accept error: %v", sp.label, err)
 			continue
 		}
-		dicomlog.Vprintf(0, "dicom.serviceProvider: Accepted connection %p (remote: %+v)", conn, conn.RemoteAddr())
+		dicomlog.Vprintf(0, "dicom.serviceProvider(%s): Accepted connection %p (remote: %+v)", sp.label, conn, conn.RemoteAddr())
 		go func() { RunProviderForConn(conn, sp.params) }()
 	}
 }

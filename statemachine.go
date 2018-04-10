@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/grailbio/go-dicom/dicomio"
@@ -68,8 +67,6 @@ func (s *stateType) String() string {
 	}
 	return fmt.Sprintf("sta%02d(%s)", *s, description)
 }
-
-var smSeq int32 = 32 // for assignign unique stateMachine.name
 
 type eventType int
 
@@ -230,7 +227,7 @@ otherwise issue A-ASSOCIATE-RJ-PDU and start ARTIM timer`,
 		stopTimer(sm)
 		v := event.pdu.(*pdu.AAssociate)
 		if v.ProtocolVersion != 0x0001 {
-			dicomlog.Vprintf(0, "dicom.stateMachine %s: Wrong remote protocol version 0x%x", sm.label, v.ProtocolVersion)
+			dicomlog.Vprintf(0, "dicom.stateMachine(%s): Wrong remote protocol version 0x%x", sm.label, v.ProtocolVersion)
 			rj := pdu.AAssociateRj{Result: 1, Source: 2, Reason: 2}
 			sendPDU(sm, &rj)
 			startTimer(sm)
@@ -287,7 +284,7 @@ func splitDataIntoPDUs(sm *stateMachine, abstractSyntaxName string, command bool
 	context, err := sm.contextManager.lookupByAbstractSyntaxUID(abstractSyntaxName)
 	if err != nil {
 		// TODO(saito) Don't crash here.
-		panic(fmt.Sprintf("dicom.stateMachine %s: Illegal syntax name %s: %s", sm.label, dicomuid.UIDString(abstractSyntaxName), err))
+		panic(fmt.Sprintf("dicom.stateMachine(%s): Illegal syntax name %s: %s", sm.label, dicomuid.UIDString(abstractSyntaxName), err))
 	}
 	var pdus []pdu.PDataTf
 	// two byte header overhead.
@@ -326,19 +323,19 @@ var actionDt1 = &stateAction{"DT-1", "Send P-DATA-TF PDU",
 		if e.Error() != nil {
 			panic(fmt.Sprintf("Failed to encode DIMSE cmd %v: %v", command, e.Error()))
 		}
-		dicomlog.Vprintf(1, "dicom.stateMachine %s: Send DIMSE msg: %v", sm.label, command)
+		dicomlog.Vprintf(1, "dicom.stateMachine(%s): Send DIMSE msg: %v", sm.label, command)
 		pdus := splitDataIntoPDUs(sm, event.dimsePayload.abstractSyntaxName, true /*command*/, e.Bytes())
 		for _, pdu := range pdus {
 			sendPDU(sm, &pdu)
 		}
 		if command.HasData() {
-			dicomlog.Vprintf(1, "dicom.stateMachine %s: Send DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command)
+			dicomlog.Vprintf(1, "dicom.stateMachine(%s): Send DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command)
 			pdus := splitDataIntoPDUs(sm, event.dimsePayload.abstractSyntaxName, false /*data*/, event.dimsePayload.data)
 			for _, pdu := range pdus {
 				sendPDU(sm, &pdu)
 			}
 		} else if len(event.dimsePayload.data) > 0 {
-			panic(fmt.Sprintf("dicom.stateMachine %s: Found DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command))
+			panic(fmt.Sprintf("dicom.stateMachine(%s): Found DIMSE data of %db, command: %v", sm.label, len(event.dimsePayload.data), command))
 		}
 		return sta06
 	}}
@@ -348,7 +345,7 @@ var actionDt2 = &stateAction{"DT-2", "Send P-DATA indication primitive",
 		contextID, command, data, err := sm.commandAssembler.AddDataPDU(event.pdu.(*pdu.PDataTf))
 		if err == nil {
 			if command != nil { // All fragments received
-				dicomlog.Vprintf(1, "dicom.stateMachine %s: DIMSE request: %v", sm.label, command)
+				dicomlog.Vprintf(1, "dicom.stateMachine(%s): DIMSE request: %v", sm.label, command)
 				sm.upcallCh <- upcallEvent{
 					eventType: upcallEventData,
 					cm:        sm.contextManager,
@@ -358,7 +355,7 @@ var actionDt2 = &stateAction{"DT-2", "Send P-DATA indication primitive",
 			}
 			return sta06
 		}
-		dicomlog.Vprintf(0, "dicom.stateMachine %s: Failed to assemble data: %v", sm.label, err) // TODO(saito)
+		dicomlog.Vprintf(0, "dicom.stateMachine(%s): Failed to assemble data: %v", sm.label, err) // TODO(saito)
 		return actionAa8.Callback(sm, event)
 	}}
 
@@ -937,11 +934,11 @@ func runOneStep(sm *stateMachine) {
 func runStateMachineForServiceUser(
 	params ServiceUserParams,
 	upcallCh chan upcallEvent,
-	downcallCh chan stateEvent) {
+	downcallCh chan stateEvent,
+	label string) {
 	doassert(params.CallingAETitle != "")
 	doassert(len(params.SOPClasses) > 0)
 	doassert(len(params.TransferSyntaxes) > 0)
-	label := fmt.Sprintf("sm(u)-%d", atomic.AddInt32(&smSeq, 1))
 	sm := &stateMachine{
 		label:          label,
 		isUser:         true,
@@ -959,14 +956,14 @@ func runStateMachineForServiceUser(
 	for sm.currentState != sta01 {
 		runOneStep(sm)
 	}
-	dicomlog.Vprintf(1, "dicom.StateMachine %s: statemachine finished", sm.label)
+	dicomlog.Vprintf(1, "dicom.StateMachine(%s): statemachine finished", sm.label)
 }
 
 func runStateMachineForServiceProvider(
 	conn net.Conn,
 	upcallCh chan upcallEvent,
-	downcallCh chan stateEvent) {
-	label := fmt.Sprintf("sm(p)-%d", atomic.AddInt32(&smSeq, 1))
+	downcallCh chan stateEvent,
+	label string) {
 	sm := &stateMachine{
 		label:          label,
 		isUser:         false,
