@@ -128,7 +128,7 @@ func decodeUserInformationItem(d *dicomio.Decoder, length uint16) *UserInformati
 	v := &UserInformationItem{}
 	d.PushLimit(int64(length))
 	defer d.PopLimit()
-	for d.Len() > 0 {
+	for !d.EOF() {
 		item := decodeSubItem(d)
 		if d.Error() != nil {
 			break
@@ -264,14 +264,6 @@ func (item *SubItemUnsupported) String() string {
 		item.Type, len(item.Data))
 }
 
-func decodeSubItemUnsupported(
-	d *dicomio.Decoder, itemType byte, length uint16) *SubItemUnsupported {
-	v := &SubItemUnsupported{}
-	v.Type = itemType
-	v.Data = d.ReadBytes(int(length))
-	return v
-}
-
 type subItemWithName struct {
 	// Type byte
 	Name string
@@ -365,7 +357,7 @@ func decodePresentationContextItem(d *dicomio.Decoder, itemType byte, length uin
 	d.Skip(1)
 	v.Result = PresentationContextResult(d.ReadByte())
 	d.Skip(1)
-	for d.Len() > 0 {
+	for !d.EOF() {
 		item := decodeSubItem(d)
 		if d.Error() != nil {
 			break
@@ -508,7 +500,8 @@ func ReadPDU(in io.Reader, maxPDUSize int) (PDU, error) {
 		// Avoid using too much memory. *2 is just an arbitrary slack.
 		return nil, fmt.Errorf("Invalid length %d; it's much larger than max PDU size of %d", length, maxPDUSize)
 	}
-	d := dicomio.NewDecoder(in, int64(length),
+	d := dicomio.NewDecoder(
+		&io.LimitedReader{R: in, N: int64(length)},
 		binary.BigEndian,  // PDU is always big endian
 		dicomio.UnknownVR) // irrelevant for PDU parsing
 	var pdu PDU
@@ -605,7 +598,7 @@ func decodeAAssociate(d *dicomio.Decoder, pduType Type) *AAssociate {
 	pdu.CalledAETitle = d.ReadString(16)
 	pdu.CallingAETitle = d.ReadString(16)
 	d.Skip(8 * 4)
-	for d.Len() > 0 {
+	for !d.EOF() {
 		item := decodeSubItem(d)
 		if d.Error() != nil {
 			break
@@ -735,7 +728,7 @@ type PDataTf struct {
 
 func decodePDataTf(d *dicomio.Decoder) *PDataTf {
 	pdu := &PDataTf{}
-	for d.Len() > 0 {
+	for !d.EOF() {
 		item := ReadPresentationDataValueItem(d)
 		if d.Error() != nil {
 			break

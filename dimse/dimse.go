@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/grailbio/go-dicom"
+	dicom "github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
 	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-dicom/dicomtag"
@@ -103,19 +103,6 @@ func (d *messageDecoder) getString(tag dicomtag.Tag, optional isOptionalElement)
 		return ""
 	}
 	v, err := e.GetString()
-	if err != nil {
-		d.setError(err)
-	}
-	return v
-}
-
-// Find an element with "tag", and extract a uint32 from it. Errors are reported in d.err.
-func (d *messageDecoder) getUInt32(tag dicomtag.Tag, optional isOptionalElement) uint32 {
-	e := d.findElement(tag, optional)
-	if e == nil {
-		return 0
-	}
-	v, err := e.GetUInt32()
 	if err != nil {
 		d.setError(err)
 	}
@@ -220,7 +207,7 @@ func ReadMessage(d *dicomio.Decoder) Message {
 	var elems []*dicom.Element
 	d.PushTransferSyntax(binary.LittleEndian, dicomio.ImplicitVR)
 	defer d.PopTransferSyntax()
-	for d.Len() > 0 {
+	for !d.EOF() {
 		elem := dicom.ReadElement(d, dicom.ReadOptions{})
 		if d.Error() != nil {
 			break

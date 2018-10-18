@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/grailbio/go-dicom"
+	dicom "github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
 	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-netdicom/dimse"
@@ -108,7 +108,7 @@ func handleCFind(
 		CommandDataSetType:        dimse.CommandDataSetTypeNull,
 		Status:                    status}, nil)
 	// Drain the responses in case of errors
-	for _ = range responseCh {
+	for range responseCh {
 	}
 }
 
@@ -175,7 +175,7 @@ func handleCMove(
 			NumberOfRemainingSuboperations: uint16(resp.Remaining),
 			NumberOfCompletedSuboperations: numSuccesses,
 			NumberOfFailedSuboperations:    numFailures,
-			Status: dimse.Status{Status: dimse.StatusPending},
+			Status:                         dimse.Status{Status: dimse.StatusPending},
 		}, nil)
 	}
 	cs.sendMessage(&dimse.CMoveRsp{
@@ -184,9 +184,9 @@ func handleCMove(
 		CommandDataSetType:             dimse.CommandDataSetTypeNull,
 		NumberOfCompletedSuboperations: numSuccesses,
 		NumberOfFailedSuboperations:    numFailures,
-		Status: status}, nil)
+		Status:                         status}, nil)
 	// Drain the responses in case of errors
-	for _ = range responseCh {
+	for range responseCh {
 	}
 }
 
@@ -239,7 +239,6 @@ func handleCGet(
 			}
 			break
 		}
-		defer cs.disp.deleteCommand(subCs)
 		err = runCStoreOnAssociation(subCs.upcallCh, subCs.disp.downcallCh, subCs.cm, subCs.messageID, resp.DataSet)
 		if err != nil {
 			dicomlog.Vprintf(0, "dicom.serviceProvider: C-GET: C-store of %v failed: %v", resp.Path, err)
@@ -255,8 +254,9 @@ func handleCGet(
 			NumberOfRemainingSuboperations: uint16(resp.Remaining),
 			NumberOfCompletedSuboperations: numSuccesses,
 			NumberOfFailedSuboperations:    numFailures,
-			Status: dimse.Status{Status: dimse.StatusPending},
+			Status:                         dimse.Status{Status: dimse.StatusPending},
 		}, nil)
+		cs.disp.deleteCommand(subCs)
 	}
 	cs.sendMessage(&dimse.CGetRsp{
 		AffectedSOPClassUID:            c.AffectedSOPClassUID,
@@ -264,9 +264,9 @@ func handleCGet(
 		CommandDataSetType:             dimse.CommandDataSetTypeNull,
 		NumberOfCompletedSuboperations: numSuccesses,
 		NumberOfFailedSuboperations:    numFailures,
-		Status: status}, nil)
+		Status:                         status}, nil)
 	// Drain the responses in case of errors
-	for _ = range responseCh {
+	for range responseCh {
 	}
 }
 
@@ -415,7 +415,7 @@ func writeElementsToBytes(elems []*dicom.Element, transferSyntaxUID string) ([]b
 func readElementsInBytes(data []byte, transferSyntaxUID string) ([]*dicom.Element, error) {
 	decoder := dicomio.NewBytesDecoderWithTransferSyntax(data, transferSyntaxUID)
 	var elems []*dicom.Element
-	for decoder.Len() > 0 {
+	for !decoder.EOF() {
 		elem := dicom.ReadElement(decoder, dicom.ReadOptions{})
 		dicomlog.Vprintf(1, "dicom.serviceProvider: C-FIND: Read elem: %v, err %v", elem, decoder.Error())
 		if decoder.Error() != nil {
