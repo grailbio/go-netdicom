@@ -1,12 +1,8 @@
 module github.com/grailbio/go-netdicom
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/gobwas/glob v0.0.0-20170212200151-51eb1ee00b6d // indirect
 	github.com/grailbio/go-dicom v0.0.0
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.2.2
-	golang.org/x/text v0.3.0 // indirect
 )
 
 replace github.com/biogo/biogo => ../../biogo/biogo
@@ -44,3 +40,5 @@ replace github.com/unidoc/unidoc => ../../unidoc/unidoc
 replace github.com/youtube/vitess => ../../youtube/vitess
 
 replace v.io/x/ref/lib/flags/sitedefaults => ../../../v.io/x/ref/lib/flags/sitedefaults
+
+replace github.com/golang/lint => ../../golang/lint
