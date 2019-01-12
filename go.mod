@@ -5,8 +5,6 @@ require (
 	github.com/stretchr/testify v1.2.2
 )
 
-replace github.com/biogo/biogo => ../../biogo/biogo
-
 replace github.com/ceph/go-ceph => ../../ceph/go-ceph
 
 replace github.com/dghubble/oauth1 => ../../dghubble/oauth1
