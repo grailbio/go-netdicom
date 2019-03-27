@@ -694,9 +694,9 @@ type AbortReasonType byte
 const (
 	AbortReasonNotSpecified             AbortReasonType = 0
 	AbortReasonUnexpectedPDU            AbortReasonType = 2
-	AbortReasonUnrecognizedPDUParameter AbortReasonType = 3
-	AbortReasonUnexpectedPDUParameter   AbortReasonType = 4
-	AbortReasonInvalidPDUParameterValue AbortReasonType = 5
+	AbortReasonUnrecognizedPDUParameter AbortReasonType = 4
+	AbortReasonUnexpectedPDUParameter   AbortReasonType = 5
+	AbortReasonInvalidPDUParameterValue AbortReasonType = 6
 )
 
 type AAbort struct {
