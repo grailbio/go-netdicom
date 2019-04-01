@@ -421,9 +421,6 @@ func ReadPresentationDataValueItem(d *dicomio.Decoder) PresentationDataValueItem
 	item.Command = (header&1 != 0)
 	item.Last = (header&2 != 0)
 	item.Value = d.ReadBytes(int(length - 2)) // remove contextID and header
-	if header&0xfc != 0 {
-		d.SetError(fmt.Errorf("PresentationDataValueItem: illegal header byte %x", header))
-	}
 	return item
 }
 
