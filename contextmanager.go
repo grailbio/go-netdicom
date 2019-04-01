@@ -160,9 +160,16 @@ func (m *contextManager) onAssociateRequest(requestItems []pdu.SubItem) ([]pdu.S
 			}
 		}
 	}
+	// PS3.7, D.3.3
 	responses = append(responses,
 		&pdu.UserInformationItem{
-			Items: []pdu.SubItem{&pdu.UserInformationMaximumLengthItem{MaximumLengthReceived: uint32(DefaultMaxPDUSize)}}})
+			Items: []pdu.SubItem{
+				&pdu.UserInformationMaximumLengthItem{MaximumLengthReceived: uint32(DefaultMaxPDUSize)},
+				&pdu.ImplementationClassUIDSubItem{Name: dicom.GoDICOMImplementationClassUID},
+				&pdu.ImplementationVersionNameSubItem{Name: dicom.GoDICOMImplementationVersionName},
+			},
+		},
+	)
 	dicomlog.Vprintf(1, "dicom.onAssociateRequest(%s): Received associate request, #contexts:%v, maxPDU:%v, implclass:%v, version:%v",
 		m.label, len(m.contextIDToAbstractSyntaxNameMap),
 		m.peerMaxPDUSize, m.peerImplementationClassUID, m.peerImplementationVersionName)
