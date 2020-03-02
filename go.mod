@@ -1,7 +1,7 @@
 module github.com/grailbio/go-netdicom
 
 require (
-	github.com/grailbio/go-dicom v0.0.0
+	github.com/grailbio/go-dicom 
 	github.com/stretchr/testify v1.2.2
 )
 
