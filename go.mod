@@ -1,7 +1,7 @@
 module github.com/grailbio/go-netdicom
 
 require (
-	github.com/grailbio/go-dicom 
+	github.com/grailbio/go-dicom v0.0.0-20190117035129-c30d9eaca591
 	github.com/stretchr/testify v1.2.2
 )
 
@@ -40,3 +40,5 @@ replace github.com/youtube/vitess => ../../youtube/vitess
 replace v.io/x/ref/lib/flags/sitedefaults => ../../../v.io/x/ref/lib/flags/sitedefaults
 
 replace github.com/golang/lint => ../../golang/lint
+
+go 1.13
