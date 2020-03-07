@@ -3,10 +3,10 @@ package netdicom
 import (
 	"fmt"
 
+	"github.com/apaladiychuk/go-netdicom/pdu"
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-dicom/dicomuid"
-	"github.com/grailbio/go-netdicom/pdu"
 )
 
 type contextManagerEntry struct {
@@ -50,7 +50,7 @@ type contextManager struct {
 // Create an empty contextManager
 func newContextManager(label string) *contextManager {
 	c := &contextManager{
-		label: label,
+		label:                            label,
 		contextIDToAbstractSyntaxNameMap: make(map[byte]*contextManagerEntry),
 		abstractSyntaxNameToContextIDMap: make(map[string]*contextManagerEntry),
 		peerMaxPDUSize:                   16384, // The default value used by Osirix & pynetdicom.

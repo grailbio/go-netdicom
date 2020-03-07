@@ -13,12 +13,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/apaladiychuk/go-netdicom/dimse"
+	"github.com/apaladiychuk/go-netdicom/sopclass"
 	"github.com/grailbio/go-dicom"
 	"github.com/grailbio/go-dicom/dicomio"
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
-	"github.com/grailbio/go-netdicom/dimse"
-	"github.com/grailbio/go-netdicom/sopclass"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
