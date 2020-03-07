@@ -1,4 +1,4 @@
-module github.com/grailbio/go-netdicom
+module github.com/apaladiychuk/go-netdicom
 
 require (
 	github.com/grailbio/go-dicom v0.0.0-20190117035129-c30d9eaca591
