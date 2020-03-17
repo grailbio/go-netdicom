@@ -1,7 +1,7 @@
 module github.com/apaladiychuk/go-netdicom
 
 require (
-	github.com/grailbio/go-dicom v0.0.0-20190117035129-c30d9eaca591
+	github.com/apaladiychuk/go-dicom v0.0.3
 	github.com/stretchr/testify v1.2.2
 )
 
@@ -17,7 +17,7 @@ replace github.com/grailbio/bigslice => ../bigslice
 
 replace github.com/grailbio/bio => ../bio
 
-//replace github.com/grailbio/go-dicom => ../go-dicom
+//replace github.com/apaladiychuk/go-dicom => ../go-dicom
 
 replace github.com/apaladiychuk/go-netdicom => ../go-netdicom
 

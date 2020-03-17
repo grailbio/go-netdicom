@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/grailbio/go-dicom"
+	"github.com/apaladiychuk/go-dicom"
 	"github.com/grailbio/go-netdicom"
 	"github.com/apaladiychuk/go-netdicom/dimse"
 	"github.com/apaladiychuk/go-netdicom/sopclass"

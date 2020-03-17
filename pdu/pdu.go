@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/grailbio/go-dicom/dicomio"
+	"github.com/apaladiychuk/go-dicom/dicomio"
 )
 
 // PDU is the interface for DUL messages like A-ASSOCIATE-AC, P-DATA-TF.
