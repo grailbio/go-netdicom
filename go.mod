@@ -1,4 +1,4 @@
-module github.com/apaladiychuk/go-netdicom
+module github.com/BTsykaniuk/go-netdicom
 
 require (
 	github.com/apaladiychuk/go-dicom v0.0.3
@@ -19,7 +19,7 @@ replace github.com/grailbio/bio => ../bio
 
 //replace github.com/apaladiychuk/go-dicom => ../go-dicom
 
-replace github.com/apaladiychuk/go-netdicom => ../go-netdicom
+replace github.com/BTsykaniuk/go-netdicom => ../go-netdicom
 
 replace github.com/grailbio/hts => ../hts
 
@@ -41,4 +41,4 @@ replace v.io/x/ref/lib/flags/sitedefaults => ../../../v.io/x/ref/lib/flags/sited
 
 replace github.com/golang/lint => ../../golang/lint
 
-go 1.13
+go 1.15
