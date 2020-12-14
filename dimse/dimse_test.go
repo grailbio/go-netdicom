@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/grailbio/go-dicom/dicomio"
-	"github.com/grailbio/go-netdicom/dimse"
+	"github.com/apaladiychuk/go-dicom/dicomio"
+	"github.com/apaladiychuk/go-netdicom/dimse"
 )
 
 func testDIMSE(t *testing.T, v dimse.Message) {

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"io/ioutil"
 
-	"github.com/grailbio/go-netdicom/fuzze2e"
+	"github.com/apaladiychuk/go-netdicom/fuzze2e"
 )
 
 func main() {
