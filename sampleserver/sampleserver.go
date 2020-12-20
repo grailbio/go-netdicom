@@ -20,12 +20,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/BTsykaniuk/go-netdicom"
+	"github.com/BTsykaniuk/go-netdicom/dimse"
 	"github.com/apaladiychuk/go-dicom"
 	"github.com/apaladiychuk/go-dicom/dicomio"
 	"github.com/apaladiychuk/go-dicom/dicomtag"
 	"github.com/apaladiychuk/go-dicom/dicomuid"
-	"github.com/apaladiychuk/go-netdicom"
-	"github.com/apaladiychuk/go-netdicom/dimse"
 )
 
 var (
