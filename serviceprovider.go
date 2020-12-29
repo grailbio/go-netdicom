@@ -521,14 +521,8 @@ func RunProviderForConn(conn net.Conn, params ServiceProviderParams) {
 
 // Run listens to incoming connections, accepts them, and runs the DICOM
 // protocol. This function never returns.
-func (sp *ServiceProvider) Run(stopCh chan struct{}) {
+func (sp *ServiceProvider) Run() {
 	for {
-		select {
-		case <-stopCh:
-			return
-		default:
-
-		}
 		conn, err := sp.listener.Accept()
 		if err != nil {
 			dicomlog.Vprintf(0, "dicom.serviceProvider(%s): Accept error: %v", sp.label, err)
@@ -544,4 +538,9 @@ func (sp *ServiceProvider) Run(stopCh chan struct{}) {
 // <name>:0, the ":0" part is replaced by the actual port numwber.
 func (sp *ServiceProvider) ListenAddr() net.Addr {
 	return sp.listener.Addr()
+}
+
+// Close listener
+func (sp *ServiceProvider) Close() {
+	sp.listener.Close()
 }
