@@ -450,7 +450,9 @@ func runCStoreOnNewAssociation(myAETitle, remoteAETitle, remoteHostPort string, 
 		return err
 	}
 	defer su.Release()
-	su.Connect(remoteHostPort)
+	config := tls.Config{}
+
+	su.Connect(remoteHostPort, &config)
 	err = su.CStore(ds)
 	dicomlog.Vprintf(1, "dicom.serviceProvider: C-STORE subop done: %v", err)
 	return err

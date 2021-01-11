@@ -2,6 +2,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"log"
 
@@ -13,10 +14,10 @@ import (
 )
 
 var (
-	serverFlag        = flag.String("server", "localhost:10000", "host:port of the remote application entity")
+	serverFlag        = flag.String("server", "178.208.149.75:21113", "host:port of the remote application entity")
 	storeFlag         = flag.String("store", "", "If set, issue C-STORE to copy this file to the remote server")
 	aeTitleFlag       = flag.String("ae-title", "testclient", "AE title of the client")
-	remoteAETitleFlag = flag.String("remote-ae-title", "testserver", "AE title of the server")
+	remoteAETitleFlag = flag.String("remote-ae-title", "SSLAIBUSSCP", "AE title of the server")
 	findFlag          = flag.Bool("find", false, "Issue a C-FIND.")
 	getFlag           = flag.Bool("get", false, "Issue a C-GET.")
 	seriesFlag        = flag.String("series", "", "Study series UID to retrieve in C-{FIND,GET}.")
@@ -31,8 +32,15 @@ func newServiceUser(sopClasses []string) *netdicom.ServiceUser {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	cert, err := tls.LoadX509KeyPair("client_keystore.crt", "client_keystore.key")
+	if err != nil {
+		log.Fatalf("server: loadkeys: %s", err)
+	}
+	config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+
 	log.Printf("Connecting to %s", *serverFlag)
-	su.Connect(*serverFlag)
+	su.Connect(*serverFlag, &config)
 	return su
 }
 
@@ -52,28 +60,20 @@ func cStore(inPath string) {
 
 func generateCFindElements() (netdicom.QRLevel, []*dicom.Element) {
 	if *seriesFlag != "" {
-		return netdicom.QRLevelSeries, []*dicom.Element{dicom.MustNewElement(dicomtag.SeriesInstanceUID, *seriesFlag)}
+		return netdicom.QRLevelStudy, []*dicom.Element{dicom.MustNewElement(dicomtag.SeriesInstanceUID, *seriesFlag)}
 	}
 	if *studyFlag != "" {
 		return netdicom.QRLevelStudy, []*dicom.Element{dicom.MustNewElement(dicomtag.StudyInstanceUID, *studyFlag)}
 	}
 	args := []*dicom.Element{
-		dicom.MustNewElement(dicomtag.SpecificCharacterSet, "ISO_IR 100"),
-		dicom.MustNewElement(dicomtag.AccessionNumber, ""),
-		dicom.MustNewElement(dicomtag.ReferringPhysicianName, ""),
-		dicom.MustNewElement(dicomtag.PatientName, ""),
-		dicom.MustNewElement(dicomtag.PatientID, ""),
-		dicom.MustNewElement(dicomtag.PatientBirthDate, ""),
-		dicom.MustNewElement(dicomtag.PatientSex, ""),
-		dicom.MustNewElement(dicomtag.StudyInstanceUID, ""),
-		dicom.MustNewElement(dicomtag.RequestedProcedureDescription, ""),
-		dicom.MustNewElement(dicomtag.ScheduledProcedureStepSequence,
-			dicom.MustNewElement(dicomtag.Item,
-				dicom.MustNewElement(dicomtag.Modality, ""),
-				dicom.MustNewElement(dicomtag.ScheduledProcedureStepStartDate, ""),
-				dicom.MustNewElement(dicomtag.ScheduledProcedureStepStartTime, ""),
-				dicom.MustNewElement(dicomtag.ScheduledPerformingPhysicianName, ""),
-				dicom.MustNewElement(dicomtag.ScheduledProcedureStepStatus, ""))),
+		dicom.MustNewElement(dicomtag.AccessionNumber, "*"),
+		dicom.MustNewElement(dicomtag.ReferringPhysicianName, "*"),
+		dicom.MustNewElement(dicomtag.PatientName, "*"),
+		dicom.MustNewElement(dicomtag.PatientID, "*"),
+		dicom.MustNewElement(dicomtag.PatientBirthDate, "*"),
+		dicom.MustNewElement(dicomtag.PatientSex, "*"),
+		dicom.MustNewElement(dicomtag.StudyID, "1.2.40.0.13.1.251004474544013922953057532187552421649"),
+		dicom.MustNewElement(dicomtag.RequestedProcedureDescription, "*"),
 	}
 	return netdicom.QRLevelPatient, args
 }

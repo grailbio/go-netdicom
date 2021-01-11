@@ -5,6 +5,8 @@ package netdicom
 //go:generate stringer -type QRLevel
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"sync"
@@ -158,11 +160,17 @@ func (su *ServiceUser) waitUntilReady() error {
 
 // Connect connects to the server at the given "host:port". Either Connect or
 // SetConn must be before calling CStore, etc.
-func (su *ServiceUser) Connect(serverAddr string) {
+func (su *ServiceUser) Connect(serverAddr string, config *tls.Config) {
 	if su.status != serviceUserInitial {
 		panic(fmt.Sprintf("dicom.serviceUser: Connect called with wrong state: %v", su.status))
 	}
-	conn, err := net.Dial("tcp", serverAddr)
+	conn, err := tls.Dial("tcp", serverAddr, config)
+	state := conn.ConnectionState()
+	for _, v := range state.PeerCertificates {
+		fmt.Println(x509.MarshalPKIXPublicKey(v.PublicKey))
+		fmt.Println(v.Subject)
+	}
+
 	if err != nil {
 		dicomlog.Vprintf(0, "dicom.serviceUser: Connect(%s): %v", serverAddr, err)
 		su.disp.downcallCh <- stateEvent{event: evt17, pdu: nil, err: err}
