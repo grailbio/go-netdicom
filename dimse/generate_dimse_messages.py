@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3
 
 import enum
 from typing import IO, List, NamedTuple
@@ -86,7 +86,8 @@ MESSAGES = [
     # P3.7 9.3.5
     Message('CEchoRq',
             Type.REQUEST, 0x30,
-            [Field('MessageID', 'MessageID', True),
+            [Field('AffectedSOPClassUID', 'string', True),
+             Field('MessageID', 'MessageID', True),
              Field('CommandDataSetType', 'uint16', True)]),
     Message('CEchoRsp',
             Type.RESPONSE, 0x8030,
