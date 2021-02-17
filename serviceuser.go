@@ -14,6 +14,7 @@ import (
 	"github.com/grailbio/go-dicom/dicomlog"
 	"github.com/grailbio/go-dicom/dicomtag"
 	"github.com/grailbio/go-dicom/dicomuid"
+
 	"github.com/grailbio/go-netdicom/dimse"
 )
 
@@ -194,9 +195,12 @@ func (su *ServiceUser) CEcho() error {
 		return err
 	}
 	defer su.disp.deleteCommand(cs)
+
 	cs.sendMessage(
-		&dimse.CEchoRq{MessageID: cs.messageID,
-			CommandDataSetType: dimse.CommandDataSetTypeNull,
+		&dimse.CEchoRq{
+			AffectedSOPClassUID: context.abstractSyntaxUID,
+			MessageID:           cs.messageID,
+			CommandDataSetType:  dimse.CommandDataSetTypeNull,
 		}, nil)
 	event, ok := <-cs.upcallCh
 	if !ok {

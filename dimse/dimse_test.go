@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/grailbio/go-dicom/dicomio"
+
 	"github.com/grailbio/go-netdicom/dimse"
 )
 
@@ -45,7 +46,12 @@ func TestCStoreRsp(t *testing.T) {
 }
 
 func TestCEchoRq(t *testing.T) {
-	testDIMSE(t, &dimse.CEchoRq{0x1234, 1, nil})
+	testDIMSE(t, &dimse.CEchoRq{
+		AffectedSOPClassUID: "123",
+		MessageID:           0x1234,
+		CommandDataSetType:  1,
+		Extra:               nil,
+	})
 }
 
 func TestCEchoRsp(t *testing.T) {

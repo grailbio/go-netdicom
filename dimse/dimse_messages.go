@@ -462,14 +462,16 @@ func decodeCMoveRsp(d *messageDecoder) *CMoveRsp {
 }
 
 type CEchoRq struct {
-	MessageID          MessageID
-	CommandDataSetType uint16
-	Extra              []*dicom.Element // Unparsed elements
+	AffectedSOPClassUID string
+	MessageID           MessageID
+	CommandDataSetType  uint16
+	Extra               []*dicom.Element // Unparsed elements
 }
 
 func (v *CEchoRq) Encode(e *dicomio.Encoder) {
 	elems := []*dicom.Element{}
 	elems = append(elems, newElement(dicomtag.CommandField, uint16(48)))
+	elems = append(elems, newElement(dicomtag.AffectedSOPClassUID, v.AffectedSOPClassUID))
 	elems = append(elems, newElement(dicomtag.MessageID, v.MessageID))
 	elems = append(elems, newElement(dicomtag.CommandDataSetType, v.CommandDataSetType))
 	elems = append(elems, v.Extra...)
@@ -493,11 +495,12 @@ func (v *CEchoRq) GetStatus() *Status {
 }
 
 func (v *CEchoRq) String() string {
-	return fmt.Sprintf("CEchoRq{MessageID:%v CommandDataSetType:%v}}", v.MessageID, v.CommandDataSetType)
+	return fmt.Sprintf("CEchoRq{AffectedSOPClassUID:%v MessageID:%v CommandDataSetType:%v}}", v.AffectedSOPClassUID, v.MessageID, v.CommandDataSetType)
 }
 
 func decodeCEchoRq(d *messageDecoder) *CEchoRq {
 	v := &CEchoRq{}
+	v.AffectedSOPClassUID = d.getString(dicomtag.AffectedSOPClassUID, requiredElement)
 	v.MessageID = d.getUInt16(dicomtag.MessageID, requiredElement)
 	v.CommandDataSetType = d.getUInt16(dicomtag.CommandDataSetType, requiredElement)
 	v.Extra = d.unparsedElements()
