@@ -1,3 +1,14 @@
+-------
+
+This project is no longer maintained.
+
+Please see https://github.com/suyashkumar/dicom/ for an alternative
+implementation of DICOM in Go, and see
+https://github.com/suyashkumar/dicom/issues/41 for any progress on a compatible
+DICOM network protocol implementation.
+
+-------
+
 [![GoDoc](https://godoc.org/github.com/grailbio/go-netdicom?status.svg)](https://godoc.org/github.com/grailbio/go-netdicom) [![Build Status](https://travis-ci.org/grailbio/go-netdicom.svg?branch=master)](https://travis-ci.org/grailbio/go-netdicom.svg?branch=master)
 
 # Golang implementation of DICOM network protocol.
