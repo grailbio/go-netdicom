@@ -1,11 +1,12 @@
 -------
 
-This project is no longer maintained.
+**This project is no longer maintained.**
 
-Please see https://github.com/suyashkumar/dicom/ for an alternative
-implementation of DICOM in Go, and see
-https://github.com/suyashkumar/dicom/issues/41 for any progress on a compatible
-DICOM network protocol implementation.
+
+Please see [suyashkumar/dicom](https://github.com/suyashkumar/dicom/) for an
+alternative implementation of DICOM in Go, and see [this
+issue](https://github.com/suyashkumar/dicom/issues/41) for any progress on a
+compatible DICOM network protocol implementation.
 
 -------
 
